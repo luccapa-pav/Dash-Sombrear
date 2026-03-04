@@ -53,8 +53,8 @@ export default function Login() {
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-gradient shadow-brand">
             <span className="font-display text-2xl font-bold text-white">S</span>
           </div>
-          <h1 className="font-display text-3xl font-bold text-foreground">Sombrear Insights</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Dashboard de gestão profissional</p>
+          <h1 className="font-display text-3xl font-bold text-foreground">Sombrear Dashboard</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Gestão de performance</p>
         </div>
 
         {/* Card */}
