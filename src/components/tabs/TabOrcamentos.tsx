@@ -81,7 +81,7 @@ export default function TabOrcamentos({ data, loading, toast }: Props) {
       </div>
 
       <OrcamentosFechadosCard data={filtered} />
-      <OrcamentosTable data={filtered} />
+      <OrcamentosTable data={filtered} toast={toast} />
     </div>
   )
 }
