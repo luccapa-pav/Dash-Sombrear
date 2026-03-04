@@ -3,7 +3,7 @@ import { FileText, Bot, Calculator, Sun, Moon, LogOut, ShieldCheck } from 'lucid
 import { supabase } from '@/lib/supabase'
 import { useTheme } from '@/hooks/useTheme'
 import { useOrcamentos } from '@/hooks/useOrcamentos'
-import { useProfile } from '@/hooks/useProfile'
+import { useProfile, usePendingCount } from '@/hooks/useProfile'
 import { useToast } from '@/hooks/useToast'
 import TabOrcamentos from '@/components/tabs/TabOrcamentos'
 import TabAgenteIA from '@/components/tabs/TabAgenteIA'
@@ -20,20 +20,20 @@ export default function Dashboard() {
   const { data: orcamentos = [], isLoading } = useOrcamentos()
   const { data: profile } = useProfile()
   const { toasts, toast, dismiss } = useToast()
-
   const isAdmin = profile?.email === ADMIN_EMAIL
+  const { data: pendingCount = 0 } = usePendingCount()
 
   const TABS = [
-    { id: 'orcamentos', label: 'Orçamentos', icon: FileText },
-    { id: 'agente-ia', label: 'Agente IA', icon: Bot },
-    { id: 'calculo-custo', label: 'Custo', icon: Calculator },
-    ...(isAdmin ? [{ id: 'admin', label: 'Usuários', icon: ShieldCheck }] : []),
+    { id: 'orcamentos', label: 'Orçamentos', icon: FileText, badge: 0 },
+    { id: 'agente-ia', label: 'Agente IA', icon: Bot, badge: 0 },
+    { id: 'calculo-custo', label: 'Custo', icon: Calculator, badge: 0 },
+    ...(isAdmin ? [{ id: 'admin', label: 'Usuários', icon: ShieldCheck, badge: pendingCount }] : []),
   ]
 
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-50 border-b bg-card/80 backdrop-blur-md">
+      <header className="sticky top-0 z-50 border-b bg-card/90 backdrop-blur-md shadow-sm">
         <div className="mx-auto flex max-w-[1600px] items-center justify-between px-4 py-3 md:px-6">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-gradient shadow-brand">
@@ -47,18 +47,24 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={toggle}
-              className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-            >
+          <div className="flex items-center gap-1">
+            {/* Badge de pendentes no header para admin */}
+            {isAdmin && pendingCount > 0 && (
+              <button
+                onClick={() => setActiveTab('admin')}
+                className="relative rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                title="Aprovações pendentes"
+              >
+                <ShieldCheck className="h-4 w-4" />
+                <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-brand text-[10px] font-bold text-white">
+                  {pendingCount}
+                </span>
+              </button>
+            )}
+            <button onClick={toggle} className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
               {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </button>
-            <button
-              onClick={() => supabase.auth.signOut()}
-              className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-              title="Sair"
-            >
+            <button onClick={() => supabase.auth.signOut()} className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors" title="Sair">
               <LogOut className="h-4 w-4" />
             </button>
           </div>
@@ -68,12 +74,12 @@ export default function Dashboard() {
       <main className="mx-auto max-w-[1600px] px-4 py-4 md:px-6 md:py-6">
         {/* Tabs */}
         <div className="mb-6 flex gap-1 rounded-xl bg-muted/60 p-1 overflow-x-auto scrollbar-none">
-          {TABS.map(({ id, label, icon: Icon }) => (
+          {TABS.map(({ id, label, icon: Icon, badge }) => (
             <button
               key={id}
               onClick={() => setActiveTab(id)}
               className={cn(
-                'flex shrink-0 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold transition-all whitespace-nowrap',
+                'relative flex shrink-0 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold transition-all whitespace-nowrap',
                 activeTab === id
                   ? 'bg-card text-primary shadow-elevated'
                   : 'text-muted-foreground hover:text-foreground',
@@ -81,11 +87,15 @@ export default function Dashboard() {
             >
               <Icon className="h-4 w-4 shrink-0" />
               <span>{label}</span>
+              {badge > 0 && (
+                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-brand text-[10px] font-bold text-white">
+                  {badge}
+                </span>
+              )}
             </button>
           ))}
         </div>
 
-        {/* Content */}
         {activeTab === 'orcamentos' && <TabOrcamentos data={orcamentos} loading={isLoading} toast={toast} />}
         {activeTab === 'agente-ia' && <TabAgenteIA data={orcamentos} />}
         {activeTab === 'calculo-custo' && <TabCalculoCusto data={orcamentos} />}

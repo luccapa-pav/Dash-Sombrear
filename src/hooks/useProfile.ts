@@ -39,3 +39,18 @@ export function useAllProfiles() {
     },
   })
 }
+
+export function usePendingCount() {
+  return useQuery({
+    queryKey: ['profiles-pending-count'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true })
+        .eq('approved', false)
+      if (error) return 0
+      return count ?? 0
+    },
+    refetchInterval: 30000, // atualiza a cada 30s
+  })
+}

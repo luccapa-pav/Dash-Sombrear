@@ -6,11 +6,11 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
+    --background: 220 16% 96%;
     --foreground: 220 15% 10%;
     --card: 0 0% 100%;
     --card-foreground: 220 15% 10%;
-    --border: 220 13% 88%;
+    --border: 220 13% 90%;
     --input: 220 13% 88%;
     --ring: 25 85% 52%;
     --primary: 25 85% 52%;
