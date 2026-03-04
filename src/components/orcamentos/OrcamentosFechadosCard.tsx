@@ -58,6 +58,12 @@ export default function OrcamentosFechadosCard({ data }: Props) {
                       <span className="font-medium">{formatCurrency(o.custo)}</span>
                     </div>
                   )}
+                  {o.instacao && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Instalação</span>
+                      <span className="font-medium">{formatCurrency(o.instacao)}</span>
+                    </div>
+                  )}
                   {o.valor_venda && (
                     <div className="flex justify-between border-t pt-1 mt-1">
                       <span className="font-semibold">Valor</span>

@@ -18,7 +18,7 @@ export default function NovoOrcamentoForm({ toast, open, onClose }: Props) {
   const [form, setForm] = useState({
     responsavel: '', cliente: '', telefone: '', largura: '', altura: '',
     modelo: MODELOS[0], tecido: '', quantidade: '1',
-    cor_ferragem_motor: '', acabamentos: '', valor_venda: '', observacoes: '',
+    cor_ferragem_motor: '', acabamentos: '', valor_venda: '', instacao: '', observacoes: '',
   })
 
   function set(key: string, value: string) {
@@ -40,12 +40,13 @@ export default function NovoOrcamentoForm({ toast, open, onClose }: Props) {
         cor_ferragem_motor: form.cor_ferragem_motor || null,
         acabamentos: form.acabamentos || null,
         valor_venda: form.valor_venda ? Number(form.valor_venda) : null,
+        instacao: form.instacao ? Number(form.instacao) : null,
         fechado: false,
         observacoes: form.observacoes || null,
       })
       toast('success', 'Orçamento salvo com sucesso!')
       onClose()
-      setForm({ responsavel: '', cliente: '', telefone: '', largura: '', altura: '', modelo: MODELOS[0], tecido: '', quantidade: '1', cor_ferragem_motor: '', acabamentos: '', valor_venda: '', observacoes: '' })
+      setForm({ responsavel: '', cliente: '', telefone: '', largura: '', altura: '', modelo: MODELOS[0], tecido: '', quantidade: '1', cor_ferragem_motor: '', acabamentos: '', valor_venda: '', instacao: '', observacoes: '' })
     } catch {
       toast('error', 'Erro ao salvar orçamento.')
     }
@@ -107,9 +108,13 @@ export default function NovoOrcamentoForm({ toast, open, onClose }: Props) {
               <label className={labelClass}>Acabamentos</label>
               <input value={form.acabamentos} onChange={(e) => set('acabamentos', e.target.value)} className={inputClass} placeholder="Opcional" />
             </div>
-            <div className="col-span-2">
+            <div>
               <label className={labelClass}>Valor de Venda (R$)</label>
               <input type="number" step="0.01" value={form.valor_venda} onChange={(e) => set('valor_venda', e.target.value)} className={inputClass} placeholder="0.00" />
+            </div>
+            <div>
+              <label className={labelClass}>Valor Instalação (R$)</label>
+              <input type="number" step="0.01" value={form.instacao} onChange={(e) => set('instacao', e.target.value)} className={inputClass} placeholder="0.00" />
             </div>
             <div className="col-span-2">
               <label className={labelClass}>Observações</label>

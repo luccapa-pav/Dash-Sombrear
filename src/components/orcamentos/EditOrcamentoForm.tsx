@@ -39,6 +39,7 @@ export default function EditOrcamentoForm({ orcamento, onClose, toast }: Props) 
     cor_ferragem_motor: orcamento.cor_ferragem_motor ?? '',
     acabamentos: orcamento.acabamentos ?? '',
     valor_venda: orcamento.valor_venda?.toString() ?? '',
+    instacao: orcamento.instacao?.toString() ?? '',
     fechado: orcamento.fechado ?? false,
     observacoes: orcamento.observacoes ?? '',
   })
@@ -60,6 +61,7 @@ export default function EditOrcamentoForm({ orcamento, onClose, toast }: Props) 
       orcamento.cor_ferragem_motor ? `Ferragem/Motor: ${orcamento.cor_ferragem_motor}` : null,
       orcamento.acabamentos ? `Acabamentos: ${orcamento.acabamentos}` : null,
       orcamento.valor_venda ? `Valor: ${formatCurrency(orcamento.valor_venda)}` : null,
+      orcamento.instacao ? `Instalação: ${formatCurrency(orcamento.instacao)}` : null,
       orcamento.observacoes ? `Obs: ${orcamento.observacoes}` : null,
     ].filter(Boolean).join('\n')
 
@@ -85,6 +87,7 @@ export default function EditOrcamentoForm({ orcamento, onClose, toast }: Props) 
         cor_ferragem_motor: form.cor_ferragem_motor || null,
         acabamentos: form.acabamentos || null,
         valor_venda: form.valor_venda ? Number(form.valor_venda) : null,
+        instacao: form.instacao ? Number(form.instacao) : null,
         fechado: form.fechado,
         observacoes: form.observacoes || null,
       })
@@ -179,6 +182,10 @@ export default function EditOrcamentoForm({ orcamento, onClose, toast }: Props) 
             <div>
               <label className={labelClass}>Valor de Venda (R$)</label>
               <input type="number" step="0.01" value={form.valor_venda} onChange={(e) => set('valor_venda', e.target.value)} className={inputClass} placeholder="0.00" />
+            </div>
+            <div>
+              <label className={labelClass}>Valor Instalação (R$)</label>
+              <input type="number" step="0.01" value={form.instacao} onChange={(e) => set('instacao', e.target.value)} className={inputClass} placeholder="0.00" />
             </div>
             <div className="flex flex-col justify-end">
               <label className={labelClass}>Status</label>

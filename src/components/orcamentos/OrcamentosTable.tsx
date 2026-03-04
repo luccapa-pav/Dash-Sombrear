@@ -48,7 +48,7 @@ function formatDate(iso: string) {
 }
 
 function exportCSV(data: Orcamento[]) {
-  const headers = ['#', 'Data', 'Cliente', 'Telefone', 'Responsável', 'Modelo', 'Tecido', 'Qtd', 'Valor', 'Fechado']
+  const headers = ['#', 'Data', 'Cliente', 'Telefone', 'Responsável', 'Modelo', 'Tecido', 'Qtd', 'Valor', 'Instalação', 'Fechado']
   const rows = data.map((o, i) => [
     i + 1,
     formatDate(o.created_at),
@@ -59,6 +59,7 @@ function exportCSV(data: Orcamento[]) {
     o.tecido,
     o.quantidade,
     o.valor_venda ?? '',
+    o.instacao ?? '',
     o.fechado ? 'Sim' : 'Não',
   ])
   const csv = [headers, ...rows].map((r) => r.map((v) => `"${v}"`).join(',')).join('\n')
@@ -82,6 +83,7 @@ function exportXLSX(data: Orcamento[]) {
     Tecido: o.tecido,
     Quantidade: o.quantidade,
     'Valor Venda': o.valor_venda ?? '',
+    'Valor Instalação': o.instacao ?? '',
     Fechado: o.fechado ? 'Sim' : 'Não',
     Observações: o.observacoes ?? '',
   }))
