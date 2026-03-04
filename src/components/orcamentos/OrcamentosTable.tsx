@@ -292,7 +292,7 @@ export default function OrcamentosTable({ data, toast, isFiltered, search = '' }
                       onClick={() => setEditing(o)}
                       className={cn(
                         'border-b last:border-0 hover:bg-muted/30 hover:translate-x-0.5 transition-all duration-150 cursor-pointer',
-                        o.fechado && 'bg-green-500/[0.03] shadow-[inset_3px_0_0_rgb(34_197_94_/_0.35)]'
+                        o.fechado && 'row-fechado'
                       )}
                     >
                       <td className="px-4 py-3 text-xs text-muted-foreground font-mono">#{i + 1}</td>
@@ -369,7 +369,7 @@ export default function OrcamentosTable({ data, toast, isFiltered, search = '' }
                   onClick={() => setEditing(o)}
                   className={cn(
                     'px-4 py-4 cursor-pointer hover:bg-muted/20 transition-colors',
-                    o.fechado && 'bg-green-500/[0.03] shadow-[inset_3px_0_0_rgb(34_197_94_/_0.35)]'
+                    o.fechado && 'row-fechado'
                   )}
                 >
                   <div className="flex items-center justify-between mb-1.5">

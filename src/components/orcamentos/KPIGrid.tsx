@@ -9,9 +9,22 @@ const META_KEY = 'sombrear-meta-mensal'
 
 interface Props { data: Orcamento[] }
 
+function KpiTooltip({ lines }: { lines: string[] }) {
+  return (
+    <div className="pointer-events-none absolute bottom-[calc(100%+6px)] left-1/2 -translate-x-1/2 z-50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 hidden md:block">
+      <div className="rounded-lg border bg-card px-3 py-2 shadow-elevated text-xs text-muted-foreground whitespace-nowrap space-y-0.5">
+        {lines.map((l, i) => <p key={i}>{l}</p>)}
+      </div>
+      <div className="absolute top-full left-1/2 -translate-x-1/2 border-[5px] border-transparent border-t-border" />
+    </div>
+  )
+}
+
 export default function KPIGrid({ data }: Props) {
   const fechados = data.filter((o) => o.fechado === true)
-  const faturamento = fechados.reduce((s, o) => s + (o.valor_venda ?? 0) + (o.instacao ?? 0), 0)
+  const totalVenda = fechados.reduce((s, o) => s + (o.valor_venda ?? 0), 0)
+  const totalInst = fechados.reduce((s, o) => s + (o.instacao ?? 0), 0)
+  const faturamento = totalVenda + totalInst
   const totalOrc = data.length
   const ticketMedio = fechados.length > 0 ? faturamento / fechados.length : 0
   const convRate = totalOrc > 0 ? (fechados.length / totalOrc) * 100 : 0
@@ -60,6 +73,7 @@ export default function KPIGrid({ data }: Props) {
       icon: CheckCircle2,
       highlight: true,
       sub: `${Math.round(animConv)}% conversão`,
+      tooltip: [`${fechados.length} de ${totalOrc} orçamento${totalOrc !== 1 ? 's' : ''}`, `Taxa de conversão: ${convRate.toFixed(1)}%`],
     },
     {
       label: 'Orçamentos',
@@ -67,6 +81,7 @@ export default function KPIGrid({ data }: Props) {
       icon: FileText,
       highlight: false,
       sub: 'no período',
+      tooltip: [`${totalOrc} orçamento${totalOrc !== 1 ? 's' : ''} no período`, `${totalOrc - fechados.length} em aberto`],
     },
     {
       label: 'Ticket Médio',
@@ -74,6 +89,9 @@ export default function KPIGrid({ data }: Props) {
       icon: ReceiptText,
       highlight: false,
       sub: 'por fechamento',
+      tooltip: ticketMedio > 0
+        ? [`${formatCurrency(faturamento)} ÷ ${fechados.length} fechamentos`]
+        : ['Nenhum fechamento ainda'],
     },
     {
       label: 'Margem Média',
@@ -81,17 +99,29 @@ export default function KPIGrid({ data }: Props) {
       icon: TrendingUp,
       highlight: false,
       sub: comMargem.length > 0 ? `${comMargem.length} com custo` : 'sem custo informado',
+      tooltip: comMargem.length > 0
+        ? [`Baseado em ${comMargem.length} fechamento${comMargem.length !== 1 ? 's' : ''} com custo`, `(venda + instalação − custo) / receita`]
+        : ['Informe o custo dos orçamentos', 'para calcular a margem'],
     },
   ]
 
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-      {/* Faturamento — animado + meta + shimmer */}
+      {/* Faturamento — shimmer + tooltip + meta */}
       <div
-        className="relative overflow-hidden animate-in fade-in-0 slide-in-from-bottom-4 duration-500 rounded-xl border border-primary/30 bg-primary/5 dark:bg-primary/10 p-4 shadow-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-elevated cursor-default"
+        className="group relative animate-in fade-in-0 slide-in-from-bottom-4 duration-500 rounded-xl border border-primary/30 bg-primary/5 dark:bg-primary/10 p-4 shadow-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-elevated cursor-default"
         style={{ animationFillMode: 'both', animationDelay: '0ms' }}
       >
-        {/* Shimmer sweep — toca uma vez ao carregar */}
+        <KpiTooltip lines={[
+          totalInst > 0
+            ? `${formatCurrency(totalVenda)} vendas + ${formatCurrency(totalInst)} instalações`
+            : `${formatCurrency(totalVenda)} em vendas`,
+          pctChange !== null
+            ? `${pctChange >= 0 ? '↑' : '↓'} ${Math.abs(pctChange).toFixed(0)}% vs mês anterior`
+            : 'Sem comparativo disponível',
+        ]} />
+
+        {/* Shimmer sweep */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-xl">
           <div className="shimmer-sweep h-full w-1/3 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
         </div>
@@ -106,10 +136,7 @@ export default function KPIGrid({ data }: Props) {
             {meta > 0 ? (
               <div className="mt-1.5">
                 <div className="h-1.5 w-full rounded-full bg-primary/20 overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-brand-gradient"
-                    style={{ width: `${animMetaPct}%` }}
-                  />
+                  <div className="h-full rounded-full bg-brand-gradient" style={{ width: `${animMetaPct}%` }} />
                 </div>
                 <p className="mt-0.5 text-xs text-muted-foreground truncate tabular-nums">
                   {Math.round(animMetaPct)}% de {formatCurrency(meta)}
@@ -161,12 +188,13 @@ export default function KPIGrid({ data }: Props) {
         )}
       </div>
 
-      {kpis.map(({ label, value, icon: Icon, highlight, sub }, i) => (
+      {kpis.map(({ label, value, icon: Icon, highlight, sub, tooltip }, i) => (
         <div
           key={label}
-          className={`animate-in fade-in-0 slide-in-from-bottom-4 duration-500 rounded-xl border p-4 shadow-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-elevated cursor-default ${highlight ? 'border-primary/30 bg-primary/5 dark:bg-primary/10' : 'bg-card'}`}
+          className={`group relative animate-in fade-in-0 slide-in-from-bottom-4 duration-500 rounded-xl border p-4 shadow-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-elevated cursor-default ${highlight ? 'border-primary/30 bg-primary/5 dark:bg-primary/10' : 'bg-card'}`}
           style={{ animationFillMode: 'both', animationDelay: `${(i + 1) * 80}ms` }}
         >
+          <KpiTooltip lines={tooltip} />
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
               <p className="text-xs font-medium text-muted-foreground truncate">{label}</p>
