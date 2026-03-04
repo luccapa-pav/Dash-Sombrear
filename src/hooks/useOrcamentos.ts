@@ -1,7 +1,26 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useEffect } from 'react'
 import { supabase, type Orcamento } from '@/lib/supabase'
 
 export function useOrcamentos() {
+  const qc = useQueryClient()
+
+  // Realtime: escuta INSERT, UPDATE e DELETE na tabela orcamentos
+  useEffect(() => {
+    const channel = supabase
+      .channel('orcamentos-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'orcamentos' },
+        () => {
+          qc.invalidateQueries({ queryKey: ['orcamentos'] })
+        },
+      )
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [qc])
+
   return useQuery({
     queryKey: ['orcamentos'],
     queryFn: async () => {
