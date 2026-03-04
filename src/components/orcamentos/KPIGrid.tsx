@@ -11,7 +11,7 @@ interface Props { data: Orcamento[] }
 
 export default function KPIGrid({ data }: Props) {
   const fechados = data.filter((o) => o.fechado === true)
-  const faturamento = fechados.reduce((s, o) => s + (o.valor_venda ?? 0), 0)
+  const faturamento = fechados.reduce((s, o) => s + (o.valor_venda ?? 0) + (o.instacao ?? 0), 0)
   const totalOrc = data.length
   const ticketMedio = fechados.length > 0 ? faturamento / fechados.length : 0
   const convRate = totalOrc > 0 ? (fechados.length / totalOrc) * 100 : 0

@@ -17,7 +17,7 @@ export default function RankingResponsavel({ data }: Props) {
       .reduce<Record<string, { count: number; value: number }>>((acc, o) => {
         if (!acc[o.responsavel]) acc[o.responsavel] = { count: 0, value: 0 }
         acc[o.responsavel].count++
-        acc[o.responsavel].value += o.valor_venda ?? 0
+        acc[o.responsavel].value += (o.valor_venda ?? 0) + (o.instacao ?? 0)
         return acc
       }, {})
   )

@@ -22,7 +22,7 @@ function getMonthlyData(data: Orcamento[]) {
     })
     return {
       mes: date.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', ''),
-      faturamento: monthData.filter((o) => o.fechado === true).reduce((s, o) => s + (o.valor_venda ?? 0), 0),
+      faturamento: monthData.filter((o) => o.fechado === true).reduce((s, o) => s + (o.valor_venda ?? 0) + (o.instacao ?? 0), 0),
       total: monthData.length,
     }
   })
@@ -58,8 +58,8 @@ function generateInsights(data: Orcamento[]): string[] {
     return d.getMonth() === lastMonthDate.getMonth() && d.getFullYear() === lastMonthDate.getFullYear()
   })
 
-  const thisFat = thisMonth.filter((o) => o.fechado === true).reduce((s, o) => s + (o.valor_venda ?? 0), 0)
-  const lastFat = lastMonth.filter((o) => o.fechado === true).reduce((s, o) => s + (o.valor_venda ?? 0), 0)
+  const thisFat = thisMonth.filter((o) => o.fechado === true).reduce((s, o) => s + (o.valor_venda ?? 0) + (o.instacao ?? 0), 0)
+  const lastFat = lastMonth.filter((o) => o.fechado === true).reduce((s, o) => s + (o.valor_venda ?? 0) + (o.instacao ?? 0), 0)
 
   if (lastFat > 0 && thisFat > 0) {
     const pct = ((thisFat - lastFat) / lastFat) * 100
@@ -150,11 +150,11 @@ function exportPDF(data: Orcamento[]) {
     const d = new Date(o.created_at)
     return d.getMonth() === lastMonthDate.getMonth() && d.getFullYear() === lastMonthDate.getFullYear()
   })
-  const thisFat = thisMonth.filter((o) => o.fechado === true).reduce((s, o) => s + (o.valor_venda ?? 0), 0)
-  const lastFat = lastMonth.filter((o) => o.fechado === true).reduce((s, o) => s + (o.valor_venda ?? 0), 0)
+  const thisFat = thisMonth.filter((o) => o.fechado === true).reduce((s, o) => s + (o.valor_venda ?? 0) + (o.instacao ?? 0), 0)
+  const lastFat = lastMonth.filter((o) => o.fechado === true).reduce((s, o) => s + (o.valor_venda ?? 0) + (o.instacao ?? 0), 0)
   const thisConv = thisMonth.length > 0 ? (thisMonth.filter((o) => o.fechado === true).length / thisMonth.length) * 100 : 0
   const fechados = data.filter((o) => o.fechado === true)
-  const faturamentoTotal = fechados.reduce((s, o) => s + (o.valor_venda ?? 0), 0)
+  const faturamentoTotal = fechados.reduce((s, o) => s + (o.valor_venda ?? 0) + (o.instacao ?? 0), 0)
 
   doc.setTextColor(40, 40, 40)
   doc.setFontSize(13)
@@ -188,7 +188,7 @@ function exportPDF(data: Orcamento[]) {
     data.reduce<Record<string, { total: number; feitos: number; fat: number }>>((acc, o) => {
       if (!acc[o.responsavel]) acc[o.responsavel] = { total: 0, feitos: 0, fat: 0 }
       acc[o.responsavel].total++
-      if (o.fechado === true) { acc[o.responsavel].feitos++; acc[o.responsavel].fat += o.valor_venda ?? 0 }
+      if (o.fechado === true) { acc[o.responsavel].feitos++; acc[o.responsavel].fat += (o.valor_venda ?? 0) + (o.instacao ?? 0) }
       return acc
     }, {})
   )
@@ -271,8 +271,8 @@ export default function TabAnalises({ data }: Props) {
     return d.getMonth() === lastMonthDate.getMonth() && d.getFullYear() === lastMonthDate.getFullYear()
   })
 
-  const thisFat = thisMonth.filter((o) => o.fechado === true).reduce((s, o) => s + (o.valor_venda ?? 0), 0)
-  const lastFat = lastMonth.filter((o) => o.fechado === true).reduce((s, o) => s + (o.valor_venda ?? 0), 0)
+  const thisFat = thisMonth.filter((o) => o.fechado === true).reduce((s, o) => s + (o.valor_venda ?? 0) + (o.instacao ?? 0), 0)
+  const lastFat = lastMonth.filter((o) => o.fechado === true).reduce((s, o) => s + (o.valor_venda ?? 0) + (o.instacao ?? 0), 0)
   const fatPct = lastFat > 0 ? ((thisFat - lastFat) / lastFat) * 100 : null
 
   const thisConv = thisMonth.length > 0 ? (thisMonth.filter((o) => o.fechado === true).length / thisMonth.length) * 100 : 0

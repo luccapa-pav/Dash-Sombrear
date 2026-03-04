@@ -1,5 +1,5 @@
 import { X } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAddOrcamento } from '@/hooks/useOrcamentos'
 import { cn } from '@/lib/utils'
 
@@ -15,6 +15,14 @@ interface Props {
 
 export default function NovoOrcamentoForm({ toast, open, onClose }: Props) {
   const { mutateAsync, isPending } = useAddOrcamento()
+
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [onClose])
   const [form, setForm] = useState({
     responsavel: '', cliente: '', telefone: '', largura: '', altura: '',
     modelo: MODELOS[0], tecido: '', quantidade: '1',

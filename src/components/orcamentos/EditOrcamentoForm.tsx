@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { X, Trash2, Copy, Check as CheckIcon, ChevronDown, ChevronUp } from 'lucide-react'
 import { useUpdateOrcamento, useDeleteOrcamento, useOrcamentoHistorico, useAddHistorico } from '@/hooks/useOrcamentos'
 import type { Orcamento } from '@/lib/supabase'
@@ -26,6 +26,14 @@ export default function EditOrcamentoForm({ orcamento, onClose, toast }: Props) 
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [copied, setCopied] = useState(false)
   const [historicoOpen, setHistoricoOpen] = useState(false)
+
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [onClose])
 
   const [form, setForm] = useState({
     responsavel: orcamento.responsavel ?? '',

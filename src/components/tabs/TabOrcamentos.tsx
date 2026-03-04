@@ -46,7 +46,7 @@ export default function TabOrcamentos({ data, loading, toast }: Props) {
   }, [])
 
   const filtered = data.filter((o) => {
-    const matchSearch = !search || [o.cliente, o.responsavel, o.modelo, o.tecido]
+    const matchSearch = !search || [o.cliente, o.responsavel, o.modelo, o.tecido, o.telefone]
       .some((v) => v?.toLowerCase().includes(search.toLowerCase()))
     const matchResp = responsavel === 'todos' || o.responsavel === responsavel
     const matchModelo = modelo === 'todos' || o.modelo === modelo

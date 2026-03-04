@@ -207,7 +207,18 @@ export default function OrcamentosTable({ data, toast, isFiltered, search = '' }
                       <td className="px-4 py-3 text-muted-foreground text-xs">{formatDate(o.created_at)}</td>
                       <td className="px-4 py-3 font-medium">
                         <span className="flex items-center gap-1.5">
-                          <Highlight text={o.cliente} query={search} />
+                          <span className="flex flex-col">
+                            <Highlight text={o.cliente} query={search} />
+                            {o.telefone && (
+                              <a
+                                href={`tel:${o.telefone}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-xs text-muted-foreground hover:text-primary transition-colors"
+                              >
+                                {o.telefone}
+                              </a>
+                            )}
+                          </span>
                           {o.observacoes && <span title={o.observacoes}><StickyNote className="h-3 w-3 shrink-0 text-muted-foreground" /></span>}
                         </span>
                       </td>
@@ -220,6 +231,17 @@ export default function OrcamentosTable({ data, toast, isFiltered, search = '' }
                     </tr>
                   ))}
                 </tbody>
+                <tfoot>
+                  <tr className="border-t bg-muted/40">
+                    <td colSpan={7} className="px-4 py-2.5 text-xs text-muted-foreground">
+                      {sorted.length} orçamento{sorted.length !== 1 ? 's' : ''}
+                    </td>
+                    <td className="px-4 py-2.5 text-sm font-bold text-primary">
+                      {formatCurrency(sorted.reduce((s, o) => s + (o.valor_venda ?? 0) + (o.instacao ?? 0), 0))}
+                    </td>
+                    <td />
+                  </tr>
+                </tfoot>
               </table>
             </div>
 
