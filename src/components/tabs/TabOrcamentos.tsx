@@ -33,6 +33,8 @@ export default function TabOrcamentos({ data, loading, toast }: Props) {
   const [modelo, setModelo] = useState('todos')
   const [fechadoFilter, setFechadoFilter] = useState('todos')
   const [periodo, setPeriodo] = useState('todos')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
 
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
@@ -63,6 +65,12 @@ export default function TabOrcamentos({ data, loading, toast }: Props) {
         matchPeriodo = created >= weekAgo
       } else if (periodo === 'mes') {
         matchPeriodo = created.getMonth() === now.getMonth() && created.getFullYear() === now.getFullYear()
+      } else if (periodo === 'custom') {
+        if (dateFrom) matchPeriodo = created >= new Date(dateFrom)
+        if (dateTo) {
+          const end = new Date(dateTo); end.setHours(23, 59, 59, 999)
+          matchPeriodo = matchPeriodo && created <= end
+        }
       }
     }
 
@@ -111,6 +119,8 @@ export default function TabOrcamentos({ data, loading, toast }: Props) {
           modelo={modelo} onModeloChange={setModelo}
           fechado={fechadoFilter} onFechadoChange={setFechadoFilter}
           periodo={periodo} onPeriodoChange={setPeriodo}
+          dateFrom={dateFrom} onDateFromChange={setDateFrom}
+          dateTo={dateTo} onDateToChange={setDateTo}
           responsaveis={responsaveis}
           modelos={modelos}
         />

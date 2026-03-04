@@ -226,7 +226,14 @@ export default function OrcamentosTable({ data, toast, isFiltered, search = '' }
                       <td className="px-4 py-3">{o.modelo}</td>
                       <td className="px-4 py-3">{o.tecido}</td>
                       <td className="px-4 py-3 text-center">{o.quantidade}</td>
-                      <td className="px-4 py-3">{o.valor_venda ? formatCurrency(o.valor_venda) : '—'}</td>
+                      <td className="px-4 py-3">
+                        <span className="flex flex-col leading-tight">
+                          <span>{o.valor_venda ? formatCurrency(o.valor_venda) : '—'}</span>
+                          {o.instacao ? (
+                            <span className="text-xs text-primary/70">+{formatCurrency(o.instacao)} inst.</span>
+                          ) : null}
+                        </span>
+                      </td>
                       <td className="px-4 py-3"><FechadoCheckbox orcamento={o} /></td>
                     </tr>
                   ))}

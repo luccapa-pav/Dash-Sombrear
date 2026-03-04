@@ -6,17 +6,21 @@ interface Props {
   modelo: string; onModeloChange: (v: string) => void
   fechado: string; onFechadoChange: (v: string) => void
   periodo: string; onPeriodoChange: (v: string) => void
+  dateFrom: string; onDateFromChange: (v: string) => void
+  dateTo: string; onDateToChange: (v: string) => void
   responsaveis: string[]
   modelos: string[]
 }
 
 const selectClass = 'w-full rounded-lg border bg-card pl-3 pr-8 py-2.5 text-sm outline-none ring-ring focus:ring-2 cursor-pointer appearance-none'
+const dateClass = 'flex-1 min-w-[130px] rounded-lg border bg-card px-3 py-2.5 text-sm outline-none ring-ring focus:ring-2'
 
 const PERIODOS = [
   { value: 'todos', label: 'Tudo' },
   { value: 'hoje', label: 'Hoje' },
   { value: 'semana', label: 'Semana' },
   { value: 'mes', label: 'Mês' },
+  { value: 'custom', label: 'Período' },
 ]
 
 function Select({ value, onChange, children }: { value: string; onChange: (v: string) => void; children: React.ReactNode }) {
@@ -30,7 +34,7 @@ function Select({ value, onChange, children }: { value: string; onChange: (v: st
   )
 }
 
-export default function FiltersBar({ search, onSearchChange, responsavel, onResponsavelChange, modelo, onModeloChange, fechado, onFechadoChange, periodo, onPeriodoChange, responsaveis, modelos }: Props) {
+export default function FiltersBar({ search, onSearchChange, responsavel, onResponsavelChange, modelo, onModeloChange, fechado, onFechadoChange, periodo, onPeriodoChange, dateFrom, onDateFromChange, dateTo, onDateToChange, responsaveis, modelos }: Props) {
   return (
     <div className="flex flex-col gap-3">
       <div className="relative">
@@ -38,7 +42,7 @@ export default function FiltersBar({ search, onSearchChange, responsavel, onResp
         <input
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
-          placeholder="Buscar cliente, responsável..."
+          placeholder="Buscar cliente, responsável, telefone..."
           className="w-full rounded-lg border bg-card py-2.5 pl-9 pr-3 text-sm outline-none ring-ring focus:ring-2"
         />
       </div>
@@ -72,6 +76,24 @@ export default function FiltersBar({ search, onSearchChange, responsavel, onResp
           <option value="aberto">Em aberto</option>
         </Select>
       </div>
+      {periodo === 'custom' && (
+        <div className="flex gap-2 items-center">
+          <span className="text-xs text-muted-foreground shrink-0">De</span>
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => onDateFromChange(e.target.value)}
+            className={dateClass}
+          />
+          <span className="text-xs text-muted-foreground shrink-0">até</span>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => onDateToChange(e.target.value)}
+            className={dateClass}
+          />
+        </div>
+      )}
     </div>
   )
 }

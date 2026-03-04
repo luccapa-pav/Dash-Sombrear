@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { FileText, Bot, Calculator, Sun, Moon, LogOut, ShieldCheck, BarChart2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useTheme } from '@/hooks/useTheme'
@@ -17,11 +17,23 @@ const ADMIN_EMAIL = 'luccapavanallo@gmail.com'
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('orcamentos')
+  const [unreadCount, setUnreadCount] = useState(0)
   const { isDark, toggle } = useTheme()
   const { toasts, toast, dismiss } = useToast()
   const { data: orcamentos = [], isLoading } = useOrcamentos((novo) => {
     toast('success', `Novo orçamento: ${novo.cliente ?? novo.responsavel}`)
+    if (!document.hasFocus()) setUnreadCount((n) => n + 1)
   })
+
+  useEffect(() => {
+    document.title = unreadCount > 0 ? `(${unreadCount}) Sombrear` : 'Sombrear'
+  }, [unreadCount])
+
+  useEffect(() => {
+    function handleFocus() { setUnreadCount(0) }
+    window.addEventListener('focus', handleFocus)
+    return () => window.removeEventListener('focus', handleFocus)
+  }, [])
   const { data: profile } = useProfile()
   const isAdmin = profile?.email === ADMIN_EMAIL
   const { data: pendingCount = 0 } = usePendingCount()
