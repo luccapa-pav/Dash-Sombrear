@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Download } from 'lucide-react'
+import { Download, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
 import type { Orcamento } from '@/lib/supabase'
 import { formatCurrency } from '@/lib/utils'
 import { cn } from '@/lib/utils'
@@ -37,6 +37,8 @@ function exportCSV(data: Orcamento[]) {
   URL.revokeObjectURL(url)
 }
 
+type SortKey = 'created_at' | 'cliente' | 'responsavel' | 'valor_venda' | 'status'
+
 interface Props {
   data: Orcamento[]
   toast: (type: 'success' | 'error', message: string) => void
@@ -44,6 +46,39 @@ interface Props {
 
 export default function OrcamentosTable({ data, toast }: Props) {
   const [editing, setEditing] = useState<Orcamento | null>(null)
+  const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'created_at', dir: 'desc' })
+
+  function toggleSort(key: SortKey) {
+    setSort((s) => s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' })
+  }
+
+  const sorted = [...data].sort((a, b) => {
+    let av: string | number, bv: string | number
+    if (sort.key === 'created_at') { av = a.created_at; bv = b.created_at }
+    else if (sort.key === 'cliente') { av = a.cliente ?? ''; bv = b.cliente ?? '' }
+    else if (sort.key === 'responsavel') { av = a.responsavel; bv = b.responsavel }
+    else if (sort.key === 'valor_venda') { av = a.valor_venda ?? -1; bv = b.valor_venda ?? -1 }
+    else { av = a.status; bv = b.status }
+    if (av < bv) return sort.dir === 'asc' ? -1 : 1
+    if (av > bv) return sort.dir === 'asc' ? 1 : -1
+    return 0
+  })
+
+  function SortIcon({ k }: { k: SortKey }) {
+    if (sort.key !== k) return <ChevronsUpDown className="h-3 w-3 opacity-40" />
+    return sort.dir === 'asc' ? <ChevronUp className="h-3 w-3 text-primary" /> : <ChevronDown className="h-3 w-3 text-primary" />
+  }
+
+  const COLS: { label: string; key?: SortKey }[] = [
+    { label: 'Data', key: 'created_at' },
+    { label: 'Cliente', key: 'cliente' },
+    { label: 'Responsável', key: 'responsavel' },
+    { label: 'Modelo' },
+    { label: 'Tecido' },
+    { label: 'Qtd' },
+    { label: 'Valor', key: 'valor_venda' },
+    { label: 'Status', key: 'status' },
+  ]
 
   return (
     <>
@@ -72,13 +107,25 @@ export default function OrcamentosTable({ data, toast }: Props) {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/40">
-                    {['Data', 'Cliente', 'Responsável', 'Modelo', 'Tecido', 'Qtd', 'Valor', 'Status'].map((h) => (
-                      <th key={h} className="px-4 py-3 text-left font-medium text-muted-foreground">{h}</th>
+                    {COLS.map(({ label, key }) => (
+                      <th
+                        key={label}
+                        onClick={() => key && toggleSort(key)}
+                        className={cn(
+                          'px-4 py-3 text-left font-medium text-muted-foreground select-none',
+                          key && 'cursor-pointer hover:text-foreground transition-colors'
+                        )}
+                      >
+                        <span className="flex items-center gap-1">
+                          {label}
+                          {key && <SortIcon k={key} />}
+                        </span>
+                      </th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {data.map((o) => (
+                  {sorted.map((o) => (
                     <tr
                       key={o.id}
                       onClick={() => setEditing(o)}
@@ -104,7 +151,7 @@ export default function OrcamentosTable({ data, toast }: Props) {
 
             {/* Mobile */}
             <div className="md:hidden divide-y">
-              {data.map((o) => (
+              {sorted.map((o) => (
                 <div key={o.id} onClick={() => setEditing(o)} className="px-4 py-4 cursor-pointer hover:bg-muted/20 transition-colors">
                   <div className="flex items-center justify-between mb-1.5">
                     <div className="min-w-0">

@@ -8,6 +8,7 @@ import NovoOrcamentoForm from '@/components/orcamentos/NovoOrcamentoForm'
 import FiltersBar from '@/components/orcamentos/FiltersBar'
 import ResponsavelChart from '@/components/charts/ResponsavelChart'
 import ModelosChart from '@/components/charts/ModelosChart'
+import RankingResponsavel from '@/components/orcamentos/RankingResponsavel'
 
 interface Props {
   data: Orcamento[]
@@ -75,7 +76,8 @@ export default function TabOrcamentos({ data, loading, toast }: Props) {
         modelos={modelos}
       />
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+        <RankingResponsavel data={filtered} />
         <ResponsavelChart data={filtered} />
         <ModelosChart data={filtered} />
       </div>

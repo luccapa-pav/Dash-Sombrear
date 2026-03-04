@@ -1,0 +1,64 @@
+import type { Orcamento } from '@/lib/supabase'
+import { formatCurrency } from '@/lib/utils'
+
+interface Props { data: Orcamento[] }
+
+const MEDALS = ['🥇', '🥈', '🥉']
+const MEDAL_BG = [
+  'bg-yellow-500/10 border-yellow-500/20',
+  'bg-slate-400/10 border-slate-400/20',
+  'bg-orange-600/10 border-orange-600/20',
+]
+
+export default function RankingResponsavel({ data }: Props) {
+  const ranked = Object.entries(
+    data
+      .filter((o) => o.status === 'FEITO')
+      .reduce<Record<string, { count: number; value: number }>>((acc, o) => {
+        if (!acc[o.responsavel]) acc[o.responsavel] = { count: 0, value: 0 }
+        acc[o.responsavel].count++
+        acc[o.responsavel].value += o.valor_venda ?? 0
+        return acc
+      }, {})
+  )
+    .map(([name, stats]) => ({ name, ...stats }))
+    .sort((a, b) => b.value - a.value)
+
+  return (
+    <div className="rounded-xl border bg-card p-5 shadow-sm">
+      <h3 className="mb-4 font-display font-semibold">Ranking de Responsáveis</h3>
+      {ranked.length === 0 ? (
+        <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">
+          Nenhum fechamento ainda
+        </div>
+      ) : (
+        <div className="space-y-2.5">
+          {ranked.map(({ name, count, value }, i) => {
+            const topValue = ranked[0].value
+            const pct = topValue > 0 ? (value / topValue) * 100 : 0
+            return (
+              <div key={name} className={`rounded-lg border p-3 ${i < 3 ? MEDAL_BG[i] : 'bg-muted/30 border-border'}`}>
+                <div className="flex items-center gap-2.5">
+                  <span className="text-lg shrink-0">{i < 3 ? MEDALS[i] : `${i + 1}º`}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-semibold truncate">{name}</span>
+                      <span className="text-sm font-bold text-primary shrink-0">{formatCurrency(value)}</span>
+                    </div>
+                    <div className="mt-1.5 h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-brand-gradient transition-all duration-500"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">{count} {count === 1 ? 'fechamento' : 'fechamentos'}</p>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
