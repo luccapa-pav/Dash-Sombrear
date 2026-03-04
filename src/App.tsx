@@ -1,9 +1,45 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useProfile } from '@/hooks/useProfile'
 import type { Session } from '@supabase/supabase-js'
 import Dashboard from '@/pages/Dashboard'
 import Login from '@/pages/Login'
+
+function AppRoutes({ session }: { session: Session }) {
+  const { data: profile, isLoading } = useProfile()
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand border-t-transparent" />
+      </div>
+    )
+  }
+
+  if (!profile?.approved) {
+    return (
+      <div className="flex h-screen flex-col items-center justify-center gap-4 bg-background p-4 text-center">
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-gradient shadow-brand">
+          <span className="font-display text-2xl font-bold text-white">S</span>
+        </div>
+        <h2 className="font-display text-xl font-bold">Aguardando aprovação</h2>
+        <p className="max-w-sm text-sm text-muted-foreground">
+          Sua conta foi criada com sucesso. O administrador precisa aprovar seu acesso antes que você possa entrar.
+        </p>
+        <p className="text-xs text-muted-foreground">Conta: {session.user.email}</p>
+        <button
+          onClick={() => supabase.auth.signOut()}
+          className="mt-2 text-sm text-primary underline"
+        >
+          Sair
+        </button>
+      </div>
+    )
+  }
+
+  return <Dashboard />
+}
 
 export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined)
@@ -26,7 +62,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={session ? <Navigate to="/" replace /> : <Login />} />
-        <Route path="/*" element={session ? <Dashboard /> : <Navigate to="/login" replace />} />
+        <Route path="/*" element={session ? <AppRoutes session={session} /> : <Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
   )

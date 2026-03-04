@@ -1,29 +1,31 @@
 import { useState } from 'react'
-import { FileText, Bot, Calculator, Sun, Moon, LogOut } from 'lucide-react'
+import { FileText, Bot, Calculator, Sun, Moon, LogOut, ShieldCheck } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useTheme } from '@/hooks/useTheme'
 import { useOrcamentos } from '@/hooks/useOrcamentos'
+import { useProfile } from '@/hooks/useProfile'
 import TabOrcamentos from '@/components/tabs/TabOrcamentos'
 import TabAgenteIA from '@/components/tabs/TabAgenteIA'
 import TabCalculoCusto from '@/components/tabs/TabCalculoCusto'
+import PainelAdmin from '@/components/admin/PainelAdmin'
 import { cn } from '@/lib/utils'
 
-const TABS = [
-  { id: 'orcamentos', label: 'Orçamentos', icon: FileText },
-  { id: 'agente-ia', label: 'Agente IA', icon: Bot },
-  { id: 'calculo-custo', label: 'Cálculo de Custo', icon: Calculator },
-] as const
-
-type TabId = typeof TABS[number]['id']
+const ADMIN_EMAIL = 'luccapavanallo@gmail.com'
 
 export default function Dashboard() {
-  const [activeTab, setActiveTab] = useState<TabId>('orcamentos')
+  const [activeTab, setActiveTab] = useState('orcamentos')
   const { isDark, toggle } = useTheme()
   const { data: orcamentos = [], isLoading } = useOrcamentos()
+  const { data: profile } = useProfile()
 
-  async function handleLogout() {
-    await supabase.auth.signOut()
-  }
+  const isAdmin = profile?.email === ADMIN_EMAIL
+
+  const TABS = [
+    { id: 'orcamentos', label: 'Orçamentos', icon: FileText },
+    { id: 'agente-ia', label: 'Agente IA', icon: Bot },
+    { id: 'calculo-custo', label: 'Cálculo de Custo', icon: Calculator },
+    ...(isAdmin ? [{ id: 'admin', label: 'Usuários', icon: ShieldCheck }] : []),
+  ]
 
   return (
     <div className="min-h-screen bg-background">
@@ -48,7 +50,7 @@ export default function Dashboard() {
               {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </button>
             <button
-              onClick={handleLogout}
+              onClick={() => supabase.auth.signOut()}
               className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
               title="Sair"
             >
@@ -82,6 +84,7 @@ export default function Dashboard() {
         {activeTab === 'orcamentos' && <TabOrcamentos data={orcamentos} loading={isLoading} />}
         {activeTab === 'agente-ia' && <TabAgenteIA data={orcamentos} />}
         {activeTab === 'calculo-custo' && <TabCalculoCusto data={orcamentos} />}
+        {activeTab === 'admin' && isAdmin && <PainelAdmin />}
       </main>
     </div>
   )
