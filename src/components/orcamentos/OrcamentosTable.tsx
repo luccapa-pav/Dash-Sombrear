@@ -1,6 +1,8 @@
 import { useState } from 'react'
-import { Download, ChevronUp, ChevronDown, ChevronsUpDown, StickyNote, Square, CheckSquare } from 'lucide-react'
+import { Download, ChevronUp, ChevronDown, ChevronsUpDown, StickyNote, Square, CheckSquare, FileDown } from 'lucide-react'
 import * as XLSX from 'xlsx'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 import type { Orcamento } from '@/lib/supabase'
 import { formatCurrency } from '@/lib/utils'
 import { cn } from '@/lib/utils'
@@ -93,6 +95,65 @@ function exportXLSX(data: Orcamento[]) {
   XLSX.writeFile(wb, `orcamentos-${new Date().toISOString().slice(0, 10)}.xlsx`)
 }
 
+function exportPDF(data: Orcamento[], isFiltered: boolean) {
+  const doc = new jsPDF({ orientation: 'landscape' })
+  const now = new Date()
+  const orange: [number, number, number] = [232, 112, 26]
+
+  doc.setFillColor(...orange)
+  doc.rect(0, 0, 297, 22, 'F')
+  doc.setTextColor(255, 255, 255)
+  doc.setFontSize(15)
+  doc.setFont('helvetica', 'bold')
+  doc.text('Sombrear — Orçamentos', 10, 10)
+  doc.setFontSize(8.5)
+  doc.setFont('helvetica', 'normal')
+  doc.text(
+    `${isFiltered ? 'Com filtros aplicados · ' : ''}${data.length} registro${data.length !== 1 ? 's' : ''} · ${now.toLocaleDateString('pt-BR')} às ${now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`,
+    10, 17
+  )
+
+  const totalVenda = data.reduce((s, o) => s + (o.valor_venda ?? 0), 0)
+  const totalInst = data.reduce((s, o) => s + (o.instacao ?? 0), 0)
+  const totalGeral = totalVenda + totalInst
+  const fechados = data.filter((o) => o.fechado === true).length
+
+  autoTable(doc, {
+    startY: 26,
+    head: [['#', 'Data', 'Cliente', 'Responsável', 'Modelo', 'Tecido', 'Qtd', 'Valor Venda', 'Instalação', 'Total', 'Fechado']],
+    body: data.map((o, i) => [
+      `#${i + 1}`,
+      formatDate(o.created_at),
+      o.cliente ?? '—',
+      o.responsavel,
+      o.modelo,
+      o.tecido,
+      String(o.quantidade),
+      o.valor_venda ? formatCurrency(o.valor_venda) : '—',
+      o.instacao ? formatCurrency(o.instacao) : '—',
+      formatCurrency((o.valor_venda ?? 0) + (o.instacao ?? 0)),
+      o.fechado ? 'Sim' : 'Não',
+    ]),
+    foot: [['', '', '', '', '', `${fechados} fechados`, '', formatCurrency(totalVenda), formatCurrency(totalInst), formatCurrency(totalGeral), '']],
+    theme: 'striped',
+    headStyles: { fillColor: orange, textColor: 255, fontStyle: 'bold', fontSize: 8 },
+    bodyStyles: { fontSize: 7.5 },
+    footStyles: { fontStyle: 'bold', fillColor: [245, 245, 245] as [number, number, number], textColor: [40, 40, 40] as [number, number, number], fontSize: 8 },
+    columnStyles: { 7: { halign: 'right' }, 8: { halign: 'right' }, 9: { halign: 'right', fontStyle: 'bold' } },
+    margin: { left: 8, right: 8 },
+  })
+
+  const pageCount = doc.getNumberOfPages()
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i)
+    doc.setFontSize(7)
+    doc.setTextColor(160, 160, 160)
+    doc.text(`Sombrear · Página ${i} de ${pageCount}`, 148, 205, { align: 'center' })
+  }
+
+  doc.save(`orcamentos-${now.toISOString().slice(0, 10)}.pdf`)
+}
+
 type SortKey = 'created_at' | 'cliente' | 'responsavel' | 'valor_venda'
 
 interface Props {
@@ -158,6 +219,13 @@ export default function OrcamentosTable({ data, toast, isFiltered, search = '' }
               >
                 <Download className="h-3.5 w-3.5" />
                 XLSX
+              </button>
+              <button
+                onClick={() => exportPDF(sorted, !!isFiltered)}
+                className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground hover:scale-105 active:scale-95 transition-all duration-150"
+              >
+                <FileDown className="h-3.5 w-3.5" />
+                PDF
               </button>
             </div>
           )}
