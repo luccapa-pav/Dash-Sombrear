@@ -18,13 +18,14 @@ export default function PainelAdmin({ toast }: Props) {
     },
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ['profiles'] })
+      qc.invalidateQueries({ queryKey: ['profiles-pending-count'] })
       toast('success', vars.approved ? 'Usuário aprovado!' : 'Acesso revogado.')
     },
     onError: () => toast('error', 'Erro ao atualizar usuário.'),
   })
 
-  const pendentes = profiles.filter((p) => !p.approved)
-  const aprovados = profiles.filter((p) => p.approved)
+  const pendentes = profiles.filter((p) => p.approved === null)
+  const aprovados = profiles.filter((p) => p.approved === true)
 
   return (
     <div className="space-y-6">

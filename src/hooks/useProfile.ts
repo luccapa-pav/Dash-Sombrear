@@ -5,7 +5,7 @@ export type Profile = {
   id: string
   email: string
   full_name: string
-  approved: boolean
+  approved: boolean | null  // null = pendente, true = aprovado, false = revogado
   created_at: string
 }
 
@@ -47,10 +47,10 @@ export function usePendingCount() {
       const { count, error } = await supabase
         .from('profiles')
         .select('*', { count: 'exact', head: true })
-        .eq('approved', false)
+        .is('approved', null)
       if (error) return 0
       return count ?? 0
     },
-    refetchInterval: 30000, // atualiza a cada 30s
+    refetchInterval: 30000,
   })
 }
