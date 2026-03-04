@@ -5,6 +5,7 @@ import { useProfile } from '@/hooks/useProfile'
 import type { Session } from '@supabase/supabase-js'
 import Dashboard from '@/pages/Dashboard'
 import Login from '@/pages/Login'
+import ResetPassword from '@/pages/ResetPassword'
 
 function AppRoutes({ session }: { session: Session }) {
   const { data: profile, isLoading } = useProfile()
@@ -62,6 +63,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={session ? <Navigate to="/" replace /> : <Login />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/*" element={session ? <AppRoutes session={session} /> : <Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
