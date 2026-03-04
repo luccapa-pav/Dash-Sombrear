@@ -2,6 +2,23 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { supabase, type Orcamento } from '@/lib/supabase'
 
+function playNotificationSound() {
+  try {
+    const ctx = new AudioContext()
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+    osc.type = 'sine'
+    osc.frequency.setValueAtTime(660, ctx.currentTime)
+    osc.frequency.setValueAtTime(880, ctx.currentTime + 0.1)
+    gain.gain.setValueAtTime(0.12, ctx.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5)
+    osc.start()
+    osc.stop(ctx.currentTime + 0.5)
+  } catch { /* browser pode bloquear sem interação prévia */ }
+}
+
 export function useOrcamentos() {
   const qc = useQueryClient()
 
@@ -12,8 +29,9 @@ export function useOrcamentos() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'orcamentos' },
-        () => {
+        (payload) => {
           qc.invalidateQueries({ queryKey: ['orcamentos'] })
+          if (payload.eventType === 'INSERT') playNotificationSound()
         },
       )
       .subscribe()

@@ -75,7 +75,12 @@ export default function EditOrcamentoForm({ orcamento, onClose, toast }: Props) 
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm">
       <div className="w-full sm:max-w-lg bg-card rounded-t-2xl sm:rounded-2xl shadow-elevated max-h-[92dvh] flex flex-col">
         <div className="flex items-center justify-between border-b px-5 py-4 shrink-0">
-          <h2 className="font-display font-semibold">Editar Orçamento</h2>
+          <div>
+            <h2 className="font-display font-semibold">Editar Orçamento</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Criado em {new Date(orcamento.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+            </p>
+          </div>
           <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-muted transition-colors">
             <X className="h-4 w-4" />
           </button>
