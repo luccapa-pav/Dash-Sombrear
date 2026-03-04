@@ -2,6 +2,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef } from 'react'
 import { supabase, type Orcamento } from '@/lib/supabase'
 
+export type HistoricoEntry = {
+  id: string
+  orcamento_id: string
+  changed_at: string
+  changed_by: string
+  snapshot: Record<string, unknown>
+}
+
 function playNotificationSound() {
   try {
     const ctx = new AudioContext()
@@ -67,7 +75,7 @@ export function useMonthlyComparison() {
       const { data } = await supabase
         .from('orcamentos')
         .select('valor_venda, created_at')
-        .eq('status', 'FEITO')
+        .eq('fechado', true)
         .gte('created_at', firstOfLastMonth)
 
       const currentMonth = (data ?? [])
@@ -116,5 +124,36 @@ export function useDeleteOrcamento() {
       if (error) throw error
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['orcamentos'] }),
+  })
+}
+
+export function useOrcamentoHistorico(orcamentoId: string | null) {
+  return useQuery({
+    queryKey: ['orcamento-historico', orcamentoId],
+    queryFn: async () => {
+      if (!orcamentoId) return [] as HistoricoEntry[]
+      const { data, error } = await supabase
+        .from('orcamento_historico')
+        .select('*')
+        .eq('orcamento_id', orcamentoId)
+        .order('changed_at', { ascending: false })
+        .limit(5)
+      if (error) throw error
+      return (data ?? []) as HistoricoEntry[]
+    },
+    enabled: !!orcamentoId,
+  })
+}
+
+export function useAddHistorico() {
+  return useMutation({
+    mutationFn: async ({ orcamento_id, snapshot }: { orcamento_id: string; snapshot: object }) => {
+      const { data: { user } } = await supabase.auth.getUser()
+      const changed_by = user?.email ?? 'desconhecido'
+      const { error } = await supabase
+        .from('orcamento_historico')
+        .insert({ orcamento_id, changed_by, snapshot })
+      if (error) throw error
+    },
   })
 }

@@ -4,7 +4,7 @@ interface Props {
   search: string; onSearchChange: (v: string) => void
   responsavel: string; onResponsavelChange: (v: string) => void
   modelo: string; onModeloChange: (v: string) => void
-  status: string; onStatusChange: (v: string) => void
+  fechado: string; onFechadoChange: (v: string) => void
   periodo: string; onPeriodoChange: (v: string) => void
   responsaveis: string[]
   modelos: string[]
@@ -30,7 +30,7 @@ function Select({ value, onChange, children }: { value: string; onChange: (v: st
   )
 }
 
-export default function FiltersBar({ search, onSearchChange, responsavel, onResponsavelChange, modelo, onModeloChange, status, onStatusChange, periodo, onPeriodoChange, responsaveis, modelos }: Props) {
+export default function FiltersBar({ search, onSearchChange, responsavel, onResponsavelChange, modelo, onModeloChange, fechado, onFechadoChange, periodo, onPeriodoChange, responsaveis, modelos }: Props) {
   return (
     <div className="flex flex-col gap-3">
       <div className="relative">
@@ -66,11 +66,10 @@ export default function FiltersBar({ search, onSearchChange, responsavel, onResp
           <option value="todos">Todos modelos</option>
           {modelos.map((m) => <option key={m} value={m}>{m}</option>)}
         </Select>
-        <Select value={status} onChange={onStatusChange}>
-          <option value="todos">Todos status</option>
-          <option value="PENDENTE">Pendente</option>
-          <option value="FEITO">Feito</option>
-          <option value="ERRO">Erro</option>
+        <Select value={fechado} onChange={onFechadoChange}>
+          <option value="todos">Todos</option>
+          <option value="fechado">Fechados</option>
+          <option value="aberto">Em aberto</option>
         </Select>
       </div>
     </div>

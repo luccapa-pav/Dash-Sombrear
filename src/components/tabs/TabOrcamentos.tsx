@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus } from 'lucide-react'
 import type { Orcamento } from '@/lib/supabase'
 import KPIGrid from '@/components/orcamentos/KPIGrid'
@@ -31,15 +31,26 @@ export default function TabOrcamentos({ data, loading, toast }: Props) {
   const [search, setSearch] = useState('')
   const [responsavel, setResponsavel] = useState('todos')
   const [modelo, setModelo] = useState('todos')
-  const [status, setStatus] = useState('todos')
+  const [fechadoFilter, setFechadoFilter] = useState('todos')
   const [periodo, setPeriodo] = useState('todos')
+
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if (e.key !== 'n' && e.key !== 'N') return
+      const active = document.activeElement
+      if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT')) return
+      setFormOpen(true)
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [])
 
   const filtered = data.filter((o) => {
     const matchSearch = !search || [o.cliente, o.responsavel, o.modelo, o.tecido]
       .some((v) => v?.toLowerCase().includes(search.toLowerCase()))
     const matchResp = responsavel === 'todos' || o.responsavel === responsavel
     const matchModelo = modelo === 'todos' || o.modelo === modelo
-    const matchStatus = status === 'todos' || o.status === status
+    const matchStatus = fechadoFilter === 'todos' || (fechadoFilter === 'fechado' ? o.fechado === true : o.fechado !== true)
 
     let matchPeriodo = true
     if (periodo !== 'todos' && o.created_at) {
@@ -98,7 +109,7 @@ export default function TabOrcamentos({ data, loading, toast }: Props) {
           search={search} onSearchChange={setSearch}
           responsavel={responsavel} onResponsavelChange={setResponsavel}
           modelo={modelo} onModeloChange={setModelo}
-          status={status} onStatusChange={setStatus}
+          fechado={fechadoFilter} onFechadoChange={setFechadoFilter}
           periodo={periodo} onPeriodoChange={setPeriodo}
           responsaveis={responsaveis}
           modelos={modelos}
@@ -111,7 +122,7 @@ export default function TabOrcamentos({ data, loading, toast }: Props) {
         </div>
 
         <OrcamentosFechadosCard data={filtered} />
-        <OrcamentosTable data={filtered} toast={toast} isFiltered={isFiltered} />
+        <OrcamentosTable data={filtered} toast={toast} isFiltered={isFiltered} search={search} />
       </div>
 
       {/* Mobile FAB */}

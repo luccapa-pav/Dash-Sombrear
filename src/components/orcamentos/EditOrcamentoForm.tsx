@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { X, Trash2, Copy, Check as CheckIcon } from 'lucide-react'
-import { useUpdateOrcamento, useDeleteOrcamento } from '@/hooks/useOrcamentos'
+import { X, Trash2, Copy, Check as CheckIcon, ChevronDown, ChevronUp } from 'lucide-react'
+import { useUpdateOrcamento, useDeleteOrcamento, useOrcamentoHistorico, useAddHistorico } from '@/hooks/useOrcamentos'
 import type { Orcamento } from '@/lib/supabase'
 import { cn, formatCurrency } from '@/lib/utils'
 
@@ -14,15 +14,23 @@ interface Props {
   toast: (type: 'success' | 'error', message: string) => void
 }
 
+function formatHistoricoDate(iso: string) {
+  return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
+}
+
 export default function EditOrcamentoForm({ orcamento, onClose, toast }: Props) {
   const { mutateAsync: update, isPending: isUpdating } = useUpdateOrcamento()
   const { mutateAsync: remove, isPending: isDeleting } = useDeleteOrcamento()
+  const { mutate: addHistorico } = useAddHistorico()
+  const { data: historico } = useOrcamentoHistorico(orcamento.id)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [historicoOpen, setHistoricoOpen] = useState(false)
 
   const [form, setForm] = useState({
     responsavel: orcamento.responsavel ?? '',
     cliente: orcamento.cliente ?? '',
+    telefone: orcamento.telefone ?? '',
     largura: orcamento.largura?.toString() ?? '',
     altura: orcamento.altura?.toString() ?? '',
     modelo: orcamento.modelo ?? MODELOS[0],
@@ -31,11 +39,11 @@ export default function EditOrcamentoForm({ orcamento, onClose, toast }: Props) 
     cor_ferragem_motor: orcamento.cor_ferragem_motor ?? '',
     acabamentos: orcamento.acabamentos ?? '',
     valor_venda: orcamento.valor_venda?.toString() ?? '',
-    status: orcamento.status ?? 'PENDENTE',
+    fechado: orcamento.fechado ?? false,
     observacoes: orcamento.observacoes ?? '',
   })
 
-  function set(key: string, value: string) {
+  function set(key: string, value: string | boolean) {
     setForm((f) => ({ ...f, [key]: value }))
   }
 
@@ -43,6 +51,7 @@ export default function EditOrcamentoForm({ orcamento, onClose, toast }: Props) 
     const lines = [
       `*Orçamento Sombrear*`,
       orcamento.cliente ? `Cliente: ${orcamento.cliente}` : null,
+      orcamento.telefone ? `Telefone: ${orcamento.telefone}` : null,
       `Responsável: ${orcamento.responsavel}`,
       `Modelo: ${orcamento.modelo}`,
       `Tecido: ${orcamento.tecido}`,
@@ -63,10 +72,11 @@ export default function EditOrcamentoForm({ orcamento, onClose, toast }: Props) 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     try {
-      await update({
+      const updated = await update({
         id: orcamento.id,
         responsavel: form.responsavel,
         cliente: form.cliente || null,
+        telefone: form.telefone || null,
         largura: form.largura ? Number(form.largura) : null,
         altura: form.altura ? Number(form.altura) : null,
         modelo: form.modelo,
@@ -75,9 +85,10 @@ export default function EditOrcamentoForm({ orcamento, onClose, toast }: Props) 
         cor_ferragem_motor: form.cor_ferragem_motor || null,
         acabamentos: form.acabamentos || null,
         valor_venda: form.valor_venda ? Number(form.valor_venda) : null,
-        status: form.status as Orcamento['status'],
+        fechado: form.fechado,
         observacoes: form.observacoes || null,
       })
+      addHistorico({ orcamento_id: orcamento.id, snapshot: updated as object })
       toast('success', 'Orçamento atualizado!')
       onClose()
     } catch {
@@ -131,6 +142,10 @@ export default function EditOrcamentoForm({ orcamento, onClose, toast }: Props) 
               <label className={labelClass}>Cliente</label>
               <input value={form.cliente} onChange={(e) => set('cliente', e.target.value)} className={inputClass} />
             </div>
+            <div className="col-span-2">
+              <label className={labelClass}>Telefone</label>
+              <input type="tel" value={form.telefone} onChange={(e) => set('telefone', e.target.value)} className={inputClass} placeholder="(00) 00000-0000" />
+            </div>
             <div>
               <label className={labelClass}>Largura (m)</label>
               <input type="number" step="0.01" value={form.largura} onChange={(e) => set('largura', e.target.value)} className={inputClass} placeholder="0.00" />
@@ -165,13 +180,23 @@ export default function EditOrcamentoForm({ orcamento, onClose, toast }: Props) 
               <label className={labelClass}>Valor de Venda (R$)</label>
               <input type="number" step="0.01" value={form.valor_venda} onChange={(e) => set('valor_venda', e.target.value)} className={inputClass} placeholder="0.00" />
             </div>
-            <div>
+            <div className="flex flex-col justify-end">
               <label className={labelClass}>Status</label>
-              <select value={form.status} onChange={(e) => set('status', e.target.value)} className={cn(inputClass, 'cursor-pointer')}>
-                <option value="PENDENTE">Pendente</option>
-                <option value="FEITO">Feito</option>
-                <option value="ERRO">Erro</option>
-              </select>
+              <button
+                type="button"
+                onClick={() => set('fechado', !form.fechado)}
+                className={cn(
+                  'flex items-center gap-2 rounded-lg border px-3.5 py-3 text-sm font-medium transition-all duration-200',
+                  form.fechado
+                    ? 'border-green-500/40 bg-green-500/10 text-green-700 dark:text-green-400'
+                    : 'bg-background text-muted-foreground hover:bg-muted/60'
+                )}
+              >
+                <span className={cn('h-4 w-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors', form.fechado ? 'border-green-500 bg-green-500' : 'border-muted-foreground')}>
+                  {form.fechado && <CheckIcon className="h-2.5 w-2.5 text-white" />}
+                </span>
+                {form.fechado ? 'Fechado' : 'Em aberto'}
+              </button>
             </div>
             <div className="col-span-2">
               <label className={labelClass}>Observações</label>
@@ -184,6 +209,37 @@ export default function EditOrcamentoForm({ orcamento, onClose, toast }: Props) 
               />
             </div>
           </div>
+
+          {/* Histórico */}
+          {historico && historico.length > 0 && (
+            <div className="mt-5 rounded-lg border bg-muted/30">
+              <button
+                type="button"
+                onClick={() => setHistoricoOpen((v) => !v)}
+                className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium"
+              >
+                <span>Histórico de alterações</span>
+                {historicoOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+              </button>
+              {historicoOpen && (
+                <div className="border-t divide-y">
+                  {historico.map((h) => {
+                    const snap = h.snapshot as Record<string, unknown>
+                    return (
+                      <div key={h.id} className="px-4 py-3 text-xs text-muted-foreground">
+                        <span className="font-medium text-foreground">{h.changed_by}</span>
+                        {' · '}
+                        {formatHistoricoDate(h.changed_at)}
+                        {snap.valor_venda !== undefined && (
+                          <p className="mt-0.5">Valor: {snap.valor_venda ? formatCurrency(Number(snap.valor_venda)) : '—'}</p>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
           {confirmDelete ? (
             <div className="mt-6 rounded-lg border border-destructive/30 bg-destructive/5 p-4">

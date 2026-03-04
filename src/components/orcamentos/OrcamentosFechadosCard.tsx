@@ -5,7 +5,7 @@ import { Trophy } from 'lucide-react'
 interface Props { data: Orcamento[] }
 
 export default function OrcamentosFechadosCard({ data }: Props) {
-  const fechados = data.filter((o) => o.status === 'FEITO')
+  const fechados = data.filter((o) => o.fechado === true)
 
   return (
     <div className="rounded-xl border bg-card shadow-sm">

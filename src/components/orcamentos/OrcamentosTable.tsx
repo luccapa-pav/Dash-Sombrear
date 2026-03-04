@@ -1,62 +1,45 @@
-import { useState, useEffect, useRef } from 'react'
-import { Download, ChevronUp, ChevronDown, ChevronsUpDown, StickyNote } from 'lucide-react'
+import { useState } from 'react'
+import { Download, ChevronUp, ChevronDown, ChevronsUpDown, StickyNote, Square, CheckSquare } from 'lucide-react'
+import * as XLSX from 'xlsx'
 import type { Orcamento } from '@/lib/supabase'
 import { formatCurrency } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import EditOrcamentoForm from './EditOrcamentoForm'
 import { useUpdateOrcamento } from '@/hooks/useOrcamentos'
 
-const STATUS_STYLES: Record<string, string> = {
-  PENDENTE: 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400',
-  FEITO: 'bg-green-500/10 text-green-600 dark:text-green-400',
-  ERRO: 'bg-destructive/10 text-destructive',
-}
-
-const STATUS_DOT: Record<string, string> = {
-  PENDENTE: 'bg-yellow-500',
-  FEITO: 'bg-green-500',
-  ERRO: 'bg-destructive',
-}
-
-function StatusBadge({ orcamento }: { orcamento: Orcamento }) {
-  const [open, setOpen] = useState(false)
-  const { mutate: updateStatus, isPending } = useUpdateOrcamento()
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [open])
-
+function FechadoCheckbox({ orcamento }: { orcamento: Orcamento }) {
+  const { mutate: update, isPending } = useUpdateOrcamento()
   return (
-    <div ref={ref} className="relative" onClick={(e) => e.stopPropagation()}>
+    <div onClick={(e) => e.stopPropagation()}>
       <button
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => update({ id: orcamento.id, fechado: !orcamento.fechado })}
         disabled={isPending}
-        className={cn('rounded-full px-2.5 py-1 text-xs font-semibold transition-opacity', STATUS_STYLES[orcamento.status], isPending && 'opacity-50')}
+        className={cn(
+          'flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold transition-all duration-200',
+          orcamento.fechado
+            ? 'bg-green-500/10 text-green-600 dark:text-green-400'
+            : 'bg-muted text-muted-foreground hover:bg-muted/60',
+          isPending && 'opacity-50'
+        )}
       >
-        {orcamento.status}
+        {orcamento.fechado ? <CheckSquare className="h-3.5 w-3.5" /> : <Square className="h-3.5 w-3.5" />}
+        {orcamento.fechado ? 'Fechado' : 'Em aberto'}
       </button>
-      {open && (
-        <div className="absolute top-full mt-1 left-0 z-30 min-w-[120px] rounded-lg border bg-card shadow-elevated overflow-hidden animate-in fade-in-0 slide-in-from-top-2 duration-150">
-          {(['PENDENTE', 'FEITO', 'ERRO'] as const).map((s) => (
-            <button
-              key={s}
-              onClick={() => { updateStatus({ id: orcamento.id, status: s }); setOpen(false) }}
-              className="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium hover:bg-muted transition-colors"
-            >
-              <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', STATUS_DOT[s])} />
-              {s}
-              {orcamento.status === s && <span className="ml-auto text-primary">✓</span>}
-            </button>
-          ))}
-        </div>
-      )}
     </div>
+  )
+}
+
+function Highlight({ text, query }: { text: string | null | undefined; query: string }) {
+  const safe = text ?? '—'
+  if (!query || !text) return <>{safe}</>
+  const idx = safe.toLowerCase().indexOf(query.toLowerCase())
+  if (idx === -1) return <>{safe}</>
+  return (
+    <>
+      {safe.slice(0, idx)}
+      <mark className="rounded bg-primary/20 px-0.5 text-primary not-italic">{safe.slice(idx, idx + query.length)}</mark>
+      {safe.slice(idx + query.length)}
+    </>
   )
 }
 
@@ -65,17 +48,18 @@ function formatDate(iso: string) {
 }
 
 function exportCSV(data: Orcamento[]) {
-  const headers = ['#', 'Data', 'Cliente', 'Responsável', 'Modelo', 'Tecido', 'Qtd', 'Valor', 'Status']
+  const headers = ['#', 'Data', 'Cliente', 'Telefone', 'Responsável', 'Modelo', 'Tecido', 'Qtd', 'Valor', 'Fechado']
   const rows = data.map((o, i) => [
     i + 1,
     formatDate(o.created_at),
     o.cliente ?? '',
+    o.telefone ?? '',
     o.responsavel,
     o.modelo,
     o.tecido,
     o.quantidade,
     o.valor_venda ?? '',
-    o.status,
+    o.fechado ? 'Sim' : 'Não',
   ])
   const csv = [headers, ...rows].map((r) => r.map((v) => `"${v}"`).join(',')).join('\n')
   const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
@@ -87,15 +71,36 @@ function exportCSV(data: Orcamento[]) {
   URL.revokeObjectURL(url)
 }
 
-type SortKey = 'created_at' | 'cliente' | 'responsavel' | 'valor_venda' | 'status'
+function exportXLSX(data: Orcamento[]) {
+  const rows = data.map((o, i) => ({
+    '#': i + 1,
+    Data: formatDate(o.created_at),
+    Cliente: o.cliente ?? '',
+    Telefone: o.telefone ?? '',
+    Responsável: o.responsavel,
+    Modelo: o.modelo,
+    Tecido: o.tecido,
+    Quantidade: o.quantidade,
+    'Valor Venda': o.valor_venda ?? '',
+    Fechado: o.fechado ? 'Sim' : 'Não',
+    Observações: o.observacoes ?? '',
+  }))
+  const ws = XLSX.utils.json_to_sheet(rows)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Orçamentos')
+  XLSX.writeFile(wb, `orcamentos-${new Date().toISOString().slice(0, 10)}.xlsx`)
+}
+
+type SortKey = 'created_at' | 'cliente' | 'responsavel' | 'valor_venda'
 
 interface Props {
   data: Orcamento[]
   toast: (type: 'success' | 'error', message: string) => void
   isFiltered?: boolean
+  search?: string
 }
 
-export default function OrcamentosTable({ data, toast, isFiltered }: Props) {
+export default function OrcamentosTable({ data, toast, isFiltered, search = '' }: Props) {
   const [editing, setEditing] = useState<Orcamento | null>(null)
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'created_at', dir: 'desc' })
 
@@ -108,8 +113,7 @@ export default function OrcamentosTable({ data, toast, isFiltered }: Props) {
     if (sort.key === 'created_at') { av = a.created_at; bv = b.created_at }
     else if (sort.key === 'cliente') { av = a.cliente ?? ''; bv = b.cliente ?? '' }
     else if (sort.key === 'responsavel') { av = a.responsavel; bv = b.responsavel }
-    else if (sort.key === 'valor_venda') { av = a.valor_venda ?? -1; bv = b.valor_venda ?? -1 }
-    else { av = a.status; bv = b.status }
+    else { av = a.valor_venda ?? -1; bv = b.valor_venda ?? -1 }
     if (av < bv) return sort.dir === 'asc' ? -1 : 1
     if (av > bv) return sort.dir === 'asc' ? 1 : -1
     return 0
@@ -129,7 +133,7 @@ export default function OrcamentosTable({ data, toast, isFiltered }: Props) {
     { label: 'Tecido' },
     { label: 'Qtd' },
     { label: 'Valor', key: 'valor_venda' },
-    { label: 'Status', key: 'status' },
+    { label: 'Fechado' },
   ]
 
   return (
@@ -138,13 +142,22 @@ export default function OrcamentosTable({ data, toast, isFiltered }: Props) {
         <div className="flex items-center justify-between border-b px-5 py-4">
           <h2 className="font-display font-semibold">Todos os Orçamentos</h2>
           {data.length > 0 && (
-            <button
-              onClick={() => exportCSV(sorted)}
-              className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground hover:scale-105 active:scale-95 transition-all duration-150"
-            >
-              <Download className="h-3.5 w-3.5" />
-              Exportar CSV
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => exportCSV(sorted)}
+                className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground hover:scale-105 active:scale-95 transition-all duration-150"
+              >
+                <Download className="h-3.5 w-3.5" />
+                CSV
+              </button>
+              <button
+                onClick={() => exportXLSX(sorted)}
+                className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground hover:scale-105 active:scale-95 transition-all duration-150"
+              >
+                <Download className="h-3.5 w-3.5" />
+                XLSX
+              </button>
+            </div>
           )}
         </div>
 
@@ -192,16 +205,16 @@ export default function OrcamentosTable({ data, toast, isFiltered }: Props) {
                       <td className="px-4 py-3 text-muted-foreground text-xs">{formatDate(o.created_at)}</td>
                       <td className="px-4 py-3 font-medium">
                         <span className="flex items-center gap-1.5">
-                          {o.cliente ?? '—'}
+                          <Highlight text={o.cliente} query={search} />
                           {o.observacoes && <span title={o.observacoes}><StickyNote className="h-3 w-3 shrink-0 text-muted-foreground" /></span>}
                         </span>
                       </td>
-                      <td className="px-4 py-3">{o.responsavel}</td>
+                      <td className="px-4 py-3"><Highlight text={o.responsavel} query={search} /></td>
                       <td className="px-4 py-3">{o.modelo}</td>
                       <td className="px-4 py-3">{o.tecido}</td>
                       <td className="px-4 py-3 text-center">{o.quantidade}</td>
                       <td className="px-4 py-3">{o.valor_venda ? formatCurrency(o.valor_venda) : '—'}</td>
-                      <td className="px-4 py-3"><StatusBadge orcamento={o} /></td>
+                      <td className="px-4 py-3"><FechadoCheckbox orcamento={o} /></td>
                     </tr>
                   ))}
                 </tbody>
@@ -216,12 +229,16 @@ export default function OrcamentosTable({ data, toast, isFiltered }: Props) {
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5">
                         <span className="text-xs font-mono text-muted-foreground">#{i + 1}</span>
-                        <p className="font-semibold text-sm truncate">{o.cliente ?? 'Sem cliente'}</p>
+                        <p className="font-semibold text-sm truncate">
+                          <Highlight text={o.cliente ?? 'Sem cliente'} query={search} />
+                        </p>
                       </div>
-                      <p className="text-xs text-muted-foreground">{o.responsavel} · {formatDate(o.created_at)}</p>
+                      <p className="text-xs text-muted-foreground">
+                        <Highlight text={o.responsavel} query={search} /> · {formatDate(o.created_at)}
+                      </p>
                     </div>
-                    <div className="ml-2 shrink-0" onClick={(e) => e.stopPropagation()}>
-                      <StatusBadge orcamento={o} />
+                    <div className="ml-2 shrink-0">
+                      <FechadoCheckbox orcamento={o} />
                     </div>
                   </div>
                   <div className="flex items-center justify-between">

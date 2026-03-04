@@ -13,7 +13,7 @@ const MEDAL_BG = [
 export default function RankingResponsavel({ data }: Props) {
   const ranked = Object.entries(
     data
-      .filter((o) => o.status === 'FEITO')
+      .filter((o) => o.fechado === true)
       .reduce<Record<string, { count: number; value: number }>>((acc, o) => {
         if (!acc[o.responsavel]) acc[o.responsavel] = { count: 0, value: 0 }
         acc[o.responsavel].count++

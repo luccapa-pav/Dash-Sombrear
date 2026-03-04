@@ -16,10 +16,9 @@ interface Props {
 export default function NovoOrcamentoForm({ toast, open, onClose }: Props) {
   const { mutateAsync, isPending } = useAddOrcamento()
   const [form, setForm] = useState({
-    responsavel: '', cliente: '', largura: '', altura: '',
+    responsavel: '', cliente: '', telefone: '', largura: '', altura: '',
     modelo: MODELOS[0], tecido: '', quantidade: '1',
-    cor_ferragem_motor: '', acabamentos: '', valor_venda: '',
-    status: 'PENDENTE' as const, observacoes: '',
+    cor_ferragem_motor: '', acabamentos: '', valor_venda: '', observacoes: '',
   })
 
   function set(key: string, value: string) {
@@ -32,6 +31,7 @@ export default function NovoOrcamentoForm({ toast, open, onClose }: Props) {
       await mutateAsync({
         responsavel: form.responsavel,
         cliente: form.cliente || null,
+        telefone: form.telefone || null,
         largura: form.largura ? Number(form.largura) : null,
         altura: form.altura ? Number(form.altura) : null,
         modelo: form.modelo,
@@ -40,12 +40,13 @@ export default function NovoOrcamentoForm({ toast, open, onClose }: Props) {
         cor_ferragem_motor: form.cor_ferragem_motor || null,
         acabamentos: form.acabamentos || null,
         valor_venda: form.valor_venda ? Number(form.valor_venda) : null,
-        status: form.status,
+        status: 'PENDENTE',
+        fechado: false,
         observacoes: form.observacoes || null,
       })
       toast('success', 'Orçamento salvo com sucesso!')
       onClose()
-      setForm({ responsavel: '', cliente: '', largura: '', altura: '', modelo: MODELOS[0], tecido: '', quantidade: '1', cor_ferragem_motor: '', acabamentos: '', valor_venda: '', status: 'PENDENTE', observacoes: '' })
+      setForm({ responsavel: '', cliente: '', telefone: '', largura: '', altura: '', modelo: MODELOS[0], tecido: '', quantidade: '1', cor_ferragem_motor: '', acabamentos: '', valor_venda: '', observacoes: '' })
     } catch {
       toast('error', 'Erro ao salvar orçamento.')
     }
@@ -72,6 +73,10 @@ export default function NovoOrcamentoForm({ toast, open, onClose }: Props) {
             <div className="col-span-2 sm:col-span-1">
               <label className={labelClass}>Cliente</label>
               <input value={form.cliente} onChange={(e) => set('cliente', e.target.value)} className={inputClass} placeholder="Nome do cliente" />
+            </div>
+            <div className="col-span-2">
+              <label className={labelClass}>Telefone</label>
+              <input type="tel" value={form.telefone} onChange={(e) => set('telefone', e.target.value)} className={inputClass} placeholder="(00) 00000-0000" />
             </div>
             <div>
               <label className={labelClass}>Largura (m)</label>
@@ -103,17 +108,9 @@ export default function NovoOrcamentoForm({ toast, open, onClose }: Props) {
               <label className={labelClass}>Acabamentos</label>
               <input value={form.acabamentos} onChange={(e) => set('acabamentos', e.target.value)} className={inputClass} placeholder="Opcional" />
             </div>
-            <div>
+            <div className="col-span-2">
               <label className={labelClass}>Valor de Venda (R$)</label>
               <input type="number" step="0.01" value={form.valor_venda} onChange={(e) => set('valor_venda', e.target.value)} className={inputClass} placeholder="0.00" />
-            </div>
-            <div>
-              <label className={labelClass}>Status</label>
-              <select value={form.status} onChange={(e) => set('status', e.target.value as 'PENDENTE')} className={cn(inputClass, 'cursor-pointer')}>
-                <option value="PENDENTE">Pendente</option>
-                <option value="FEITO">Feito</option>
-                <option value="ERRO">Erro</option>
-              </select>
             </div>
             <div className="col-span-2">
               <label className={labelClass}>Observações</label>

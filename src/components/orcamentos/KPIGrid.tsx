@@ -10,7 +10,7 @@ const META_KEY = 'sombrear-meta-mensal'
 interface Props { data: Orcamento[] }
 
 export default function KPIGrid({ data }: Props) {
-  const fechados = data.filter((o) => o.status === 'FEITO')
+  const fechados = data.filter((o) => o.fechado === true)
   const faturamento = fechados.reduce((s, o) => s + (o.valor_venda ?? 0), 0)
   const totalOrc = data.length
   const ticketMedio = fechados.length > 0 ? faturamento / fechados.length : 0

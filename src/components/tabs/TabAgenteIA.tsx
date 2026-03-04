@@ -13,7 +13,7 @@ interface Props { data: Orcamento[] }
 
 export default function TabAgenteIA({ data }: Props) {
   const leads = data.filter((o) => o.fonte === 'agente_ia')
-  const convertidos = leads.filter((o) => o.status === 'FEITO')
+  const convertidos = leads.filter((o) => o.fechado === true)
   const faturamento = convertidos.reduce((s, o) => s + (o.valor_venda ?? 0), 0)
 
   const animLeads = useCountUp(leads.length, 700)
