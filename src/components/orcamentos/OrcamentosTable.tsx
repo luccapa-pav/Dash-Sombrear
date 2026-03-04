@@ -16,8 +16,9 @@ function formatDate(iso: string) {
 }
 
 function exportCSV(data: Orcamento[]) {
-  const headers = ['Data', 'Cliente', 'Responsável', 'Modelo', 'Tecido', 'Qtd', 'Valor', 'Status']
-  const rows = data.map((o) => [
+  const headers = ['#', 'Data', 'Cliente', 'Responsável', 'Modelo', 'Tecido', 'Qtd', 'Valor', 'Status']
+  const rows = data.map((o, i) => [
+    i + 1,
     formatDate(o.created_at),
     o.cliente ?? '',
     o.responsavel,
@@ -42,9 +43,10 @@ type SortKey = 'created_at' | 'cliente' | 'responsavel' | 'valor_venda' | 'statu
 interface Props {
   data: Orcamento[]
   toast: (type: 'success' | 'error', message: string) => void
+  isFiltered?: boolean
 }
 
-export default function OrcamentosTable({ data, toast }: Props) {
+export default function OrcamentosTable({ data, toast, isFiltered }: Props) {
   const [editing, setEditing] = useState<Orcamento | null>(null)
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'created_at', dir: 'desc' })
 
@@ -70,6 +72,7 @@ export default function OrcamentosTable({ data, toast }: Props) {
   }
 
   const COLS: { label: string; key?: SortKey }[] = [
+    { label: '#' },
     { label: 'Data', key: 'created_at' },
     { label: 'Cliente', key: 'cliente' },
     { label: 'Responsável', key: 'responsavel' },
@@ -87,7 +90,7 @@ export default function OrcamentosTable({ data, toast }: Props) {
           <h2 className="font-display font-semibold">Todos os Orçamentos</h2>
           {data.length > 0 && (
             <button
-              onClick={() => exportCSV(data)}
+              onClick={() => exportCSV(sorted)}
               className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
             >
               <Download className="h-3.5 w-3.5" />
@@ -97,8 +100,13 @@ export default function OrcamentosTable({ data, toast }: Props) {
         </div>
 
         {data.length === 0 ? (
-          <div className="py-10 text-center text-sm text-muted-foreground">
-            Nenhum orçamento encontrado.
+          <div className="py-12 text-center">
+            <p className="text-sm font-medium text-foreground">
+              {isFiltered ? 'Nenhum resultado para os filtros aplicados' : 'Nenhum orçamento ainda'}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {isFiltered ? 'Tente ajustar ou limpar os filtros' : 'Clique em "+ Novo Orçamento" para começar'}
+            </p>
           </div>
         ) : (
           <>
@@ -125,12 +133,13 @@ export default function OrcamentosTable({ data, toast }: Props) {
                   </tr>
                 </thead>
                 <tbody>
-                  {sorted.map((o) => (
+                  {sorted.map((o, i) => (
                     <tr
                       key={o.id}
                       onClick={() => setEditing(o)}
                       className="border-b last:border-0 hover:bg-muted/30 transition-colors cursor-pointer"
                     >
+                      <td className="px-4 py-3 text-xs text-muted-foreground font-mono">#{i + 1}</td>
                       <td className="px-4 py-3 text-muted-foreground text-xs">{formatDate(o.created_at)}</td>
                       <td className="px-4 py-3 font-medium">{o.cliente ?? '—'}</td>
                       <td className="px-4 py-3">{o.responsavel}</td>
@@ -151,11 +160,14 @@ export default function OrcamentosTable({ data, toast }: Props) {
 
             {/* Mobile */}
             <div className="md:hidden divide-y">
-              {sorted.map((o) => (
+              {sorted.map((o, i) => (
                 <div key={o.id} onClick={() => setEditing(o)} className="px-4 py-4 cursor-pointer hover:bg-muted/20 transition-colors">
                   <div className="flex items-center justify-between mb-1.5">
                     <div className="min-w-0">
-                      <p className="font-semibold text-sm truncate">{o.cliente ?? 'Sem cliente'}</p>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-mono text-muted-foreground">#{i + 1}</span>
+                        <p className="font-semibold text-sm truncate">{o.cliente ?? 'Sem cliente'}</p>
+                      </div>
                       <p className="text-xs text-muted-foreground">{o.responsavel} · {formatDate(o.created_at)}</p>
                     </div>
                     <span className={cn('ml-2 shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold', STATUS_STYLES[o.status])}>

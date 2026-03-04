@@ -1,4 +1,4 @@
-import { Search } from 'lucide-react'
+import { Search, ChevronDown } from 'lucide-react'
 
 interface Props {
   search: string; onSearchChange: (v: string) => void
@@ -10,7 +10,7 @@ interface Props {
   modelos: string[]
 }
 
-const selectClass = 'flex-1 min-w-[140px] rounded-lg border bg-card px-3 py-2.5 text-sm outline-none ring-ring focus:ring-2 cursor-pointer'
+const selectClass = 'w-full rounded-lg border bg-card pl-3 pr-8 py-2.5 text-sm outline-none ring-ring focus:ring-2 cursor-pointer appearance-none'
 
 const PERIODOS = [
   { value: 'todos', label: 'Tudo' },
@@ -18,6 +18,17 @@ const PERIODOS = [
   { value: 'semana', label: 'Semana' },
   { value: 'mes', label: 'Mês' },
 ]
+
+function Select({ value, onChange, children }: { value: string; onChange: (v: string) => void; children: React.ReactNode }) {
+  return (
+    <div className="relative flex-1 min-w-[140px]">
+      <select value={value} onChange={(e) => onChange(e.target.value)} className={selectClass}>
+        {children}
+      </select>
+      <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+    </div>
+  )
+}
 
 export default function FiltersBar({ search, onSearchChange, responsavel, onResponsavelChange, modelo, onModeloChange, status, onStatusChange, periodo, onPeriodoChange, responsaveis, modelos }: Props) {
   return (
@@ -47,20 +58,20 @@ export default function FiltersBar({ search, onSearchChange, responsavel, onResp
             </button>
           ))}
         </div>
-        <select value={responsavel} onChange={(e) => onResponsavelChange(e.target.value)} className={selectClass}>
+        <Select value={responsavel} onChange={onResponsavelChange}>
           <option value="todos">Todos responsáveis</option>
           {responsaveis.map((r) => <option key={r} value={r}>{r}</option>)}
-        </select>
-        <select value={modelo} onChange={(e) => onModeloChange(e.target.value)} className={selectClass}>
+        </Select>
+        <Select value={modelo} onChange={onModeloChange}>
           <option value="todos">Todos modelos</option>
           {modelos.map((m) => <option key={m} value={m}>{m}</option>)}
-        </select>
-        <select value={status} onChange={(e) => onStatusChange(e.target.value)} className={selectClass}>
+        </Select>
+        <Select value={status} onChange={onStatusChange}>
           <option value="todos">Todos status</option>
           <option value="PENDENTE">Pendente</option>
           <option value="FEITO">Feito</option>
           <option value="ERRO">Erro</option>
-        </select>
+        </Select>
       </div>
     </div>
   )

@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import type { Orcamento } from '@/lib/supabase'
-import { Loader2 } from 'lucide-react'
 import KPIGrid from '@/components/orcamentos/KPIGrid'
 import OrcamentosFechadosCard from '@/components/orcamentos/OrcamentosFechadosCard'
 import OrcamentosTable from '@/components/orcamentos/OrcamentosTable'
@@ -14,6 +13,16 @@ interface Props {
   data: Orcamento[]
   loading: boolean
   toast: (type: 'success' | 'error', message: string) => void
+}
+
+function SkeletonCard({ wide = false }: { wide?: boolean }) {
+  return (
+    <div className={`rounded-xl border bg-card p-4 shadow-sm animate-pulse ${wide ? 'col-span-2 lg:col-span-4' : ''}`}>
+      <div className="h-3 w-20 rounded bg-muted mb-3" />
+      <div className="h-7 w-28 rounded bg-muted mb-2" />
+      <div className="h-3 w-16 rounded bg-muted" />
+    </div>
+  )
 }
 
 export default function TabOrcamentos({ data, loading, toast }: Props) {
@@ -49,11 +58,22 @@ export default function TabOrcamentos({ data, loading, toast }: Props) {
 
   const responsaveis = [...new Set(data.map((o) => o.responsavel))].filter(Boolean)
   const modelos = [...new Set(data.map((o) => o.modelo))].filter(Boolean)
+  const isFiltered = filtered.length !== data.length
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="space-y-5">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard />
+        </div>
+        <div className="rounded-xl border bg-card shadow-sm animate-pulse">
+          <div className="border-b px-5 py-4">
+            <div className="h-5 w-48 rounded bg-muted" />
+          </div>
+          <div className="p-5 space-y-3">
+            {[...Array(5)].map((_, i) => <div key={i} className="h-10 rounded bg-muted" />)}
+          </div>
+        </div>
       </div>
     )
   }
@@ -83,7 +103,7 @@ export default function TabOrcamentos({ data, loading, toast }: Props) {
       </div>
 
       <OrcamentosFechadosCard data={filtered} />
-      <OrcamentosTable data={filtered} toast={toast} />
+      <OrcamentosTable data={filtered} toast={toast} isFiltered={isFiltered} />
     </div>
   )
 }

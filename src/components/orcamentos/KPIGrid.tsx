@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import type { Orcamento } from '@/lib/supabase'
 import { formatCurrency } from '@/lib/utils'
-import { CheckCircle2, DollarSign, FileText, TrendingUp, Pencil, Check } from 'lucide-react'
+import { CheckCircle2, DollarSign, FileText, ReceiptText, Pencil, Check } from 'lucide-react'
+import { useMonthlyComparison } from '@/hooks/useOrcamentos'
 
 const META_KEY = 'sombrear-meta-mensal'
 
@@ -11,7 +12,7 @@ export default function KPIGrid({ data }: Props) {
   const fechados = data.filter((o) => o.status === 'FEITO')
   const faturamento = fechados.reduce((s, o) => s + (o.valor_venda ?? 0), 0)
   const totalOrc = data.length
-  const valorTotal = data.reduce((s, o) => s + (o.valor_venda ?? 0), 0)
+  const ticketMedio = fechados.length > 0 ? faturamento / fechados.length : 0
 
   const [meta, setMeta] = useState(() => {
     const saved = localStorage.getItem(META_KEY)
@@ -29,15 +30,38 @@ export default function KPIGrid({ data }: Props) {
 
   const metaPct = meta > 0 ? Math.min((faturamento / meta) * 100, 100) : 0
 
+  const { data: monthly } = useMonthlyComparison()
+  const pctChange = monthly && monthly.previousMonth > 0
+    ? ((monthly.currentMonth - monthly.previousMonth) / monthly.previousMonth) * 100
+    : null
+
   const kpis = [
-    { label: 'Fechamentos', value: String(fechados.length), icon: CheckCircle2, highlight: true, sub: `${totalOrc > 0 ? ((fechados.length / totalOrc) * 100).toFixed(0) : 0}% conversão` },
-    { label: 'Orçamentos', value: String(totalOrc), icon: FileText, highlight: false, sub: 'no período' },
-    { label: 'Valor Total', value: formatCurrency(valorTotal), icon: TrendingUp, highlight: false, sub: 'todos' },
+    {
+      label: 'Fechamentos',
+      value: String(fechados.length),
+      icon: CheckCircle2,
+      highlight: true,
+      sub: `${totalOrc > 0 ? ((fechados.length / totalOrc) * 100).toFixed(0) : 0}% conversão`,
+    },
+    {
+      label: 'Orçamentos',
+      value: String(totalOrc),
+      icon: FileText,
+      highlight: false,
+      sub: 'no período',
+    },
+    {
+      label: 'Ticket Médio',
+      value: ticketMedio > 0 ? formatCurrency(ticketMedio) : '—',
+      icon: ReceiptText,
+      highlight: false,
+      sub: 'por fechamento',
+    },
   ]
 
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-      {/* Faturamento com meta */}
+      {/* Faturamento com meta e comparativo */}
       <div className="rounded-xl border border-primary/30 bg-primary/5 dark:bg-primary/10 p-4 shadow-sm">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
@@ -56,8 +80,18 @@ export default function KPIGrid({ data }: Props) {
                   {metaPct.toFixed(0)}% de {formatCurrency(meta)}
                 </p>
               </div>
+            ) : pctChange !== null ? (
+              <p className={`mt-0.5 text-xs font-medium truncate ${pctChange >= 0 ? 'text-green-600 dark:text-green-400' : 'text-destructive'}`}>
+                {pctChange >= 0 ? '↑' : '↓'} {Math.abs(pctChange).toFixed(0)}% vs mês ant.
+              </p>
             ) : (
               <p className="mt-0.5 text-xs text-muted-foreground">fechados</p>
+            )}
+
+            {meta > 0 && pctChange !== null && (
+              <p className={`mt-0.5 text-xs font-medium truncate ${pctChange >= 0 ? 'text-green-600 dark:text-green-400' : 'text-destructive'}`}>
+                {pctChange >= 0 ? '↑' : '↓'} {Math.abs(pctChange).toFixed(0)}% vs mês ant.
+              </p>
             )}
           </div>
           <div className="flex flex-col items-center gap-1 shrink-0">

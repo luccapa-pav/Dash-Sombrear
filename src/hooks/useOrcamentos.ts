@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { supabase, type Orcamento } from '@/lib/supabase'
 
 function playNotificationSound() {
@@ -19,10 +19,11 @@ function playNotificationSound() {
   } catch { /* browser pode bloquear sem interação prévia */ }
 }
 
-export function useOrcamentos() {
+export function useOrcamentos(onInsert?: (record: Orcamento) => void) {
   const qc = useQueryClient()
+  const onInsertRef = useRef(onInsert)
+  onInsertRef.current = onInsert
 
-  // Realtime: escuta INSERT, UPDATE e DELETE na tabela orcamentos
   useEffect(() => {
     const channel = supabase
       .channel('orcamentos-realtime')
@@ -31,7 +32,10 @@ export function useOrcamentos() {
         { event: '*', schema: 'public', table: 'orcamentos' },
         (payload) => {
           qc.invalidateQueries({ queryKey: ['orcamentos'] })
-          if (payload.eventType === 'INSERT') playNotificationSound()
+          if (payload.eventType === 'INSERT') {
+            playNotificationSound()
+            onInsertRef.current?.(payload.new as Orcamento)
+          }
         },
       )
       .subscribe()
@@ -49,6 +53,34 @@ export function useOrcamentos() {
       if (error) throw error
       return data as Orcamento[]
     },
+  })
+}
+
+export function useMonthlyComparison() {
+  const now = new Date()
+  const firstOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+  const firstOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString()
+
+  return useQuery({
+    queryKey: ['orcamentos-monthly-comparison'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('orcamentos')
+        .select('valor_venda, created_at')
+        .eq('status', 'FEITO')
+        .gte('created_at', firstOfLastMonth)
+
+      const currentMonth = (data ?? [])
+        .filter((o) => new Date(o.created_at) >= new Date(firstOfThisMonth))
+        .reduce((s, o) => s + (o.valor_venda ?? 0), 0)
+
+      const previousMonth = (data ?? [])
+        .filter((o) => new Date(o.created_at) < new Date(firstOfThisMonth))
+        .reduce((s, o) => s + (o.valor_venda ?? 0), 0)
+
+      return { currentMonth, previousMonth }
+    },
+    refetchInterval: 60000,
   })
 }
 

@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { X, Trash2 } from 'lucide-react'
+import { X, Trash2, Copy, Check as CheckIcon } from 'lucide-react'
 import { useUpdateOrcamento, useDeleteOrcamento } from '@/hooks/useOrcamentos'
 import type { Orcamento } from '@/lib/supabase'
-import { cn } from '@/lib/utils'
+import { cn, formatCurrency } from '@/lib/utils'
 
 const MODELOS = ['Rolo', 'Romeu e Julieta', 'Vertical', 'Horizontal', 'Painel', 'Cortina']
 const inputClass = 'w-full rounded-lg border bg-background px-3.5 py-3 text-sm outline-none ring-ring focus:ring-2'
@@ -18,6 +18,7 @@ export default function EditOrcamentoForm({ orcamento, onClose, toast }: Props) 
   const { mutateAsync: update, isPending: isUpdating } = useUpdateOrcamento()
   const { mutateAsync: remove, isPending: isDeleting } = useDeleteOrcamento()
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   const [form, setForm] = useState({
     responsavel: orcamento.responsavel ?? '',
@@ -35,6 +36,26 @@ export default function EditOrcamentoForm({ orcamento, onClose, toast }: Props) 
 
   function set(key: string, value: string) {
     setForm((f) => ({ ...f, [key]: value }))
+  }
+
+  function handleCopy() {
+    const lines = [
+      `*Orçamento Sombrear*`,
+      orcamento.cliente ? `Cliente: ${orcamento.cliente}` : null,
+      `Responsável: ${orcamento.responsavel}`,
+      `Modelo: ${orcamento.modelo}`,
+      `Tecido: ${orcamento.tecido}`,
+      orcamento.largura && orcamento.altura ? `Medidas: ${orcamento.largura}m x ${orcamento.altura}m` : null,
+      `Qtd: ${orcamento.quantidade}`,
+      orcamento.cor_ferragem_motor ? `Ferragem/Motor: ${orcamento.cor_ferragem_motor}` : null,
+      orcamento.acabamentos ? `Acabamentos: ${orcamento.acabamentos}` : null,
+      orcamento.valor_venda ? `Valor: ${formatCurrency(orcamento.valor_venda)}` : null,
+    ].filter(Boolean).join('\n')
+
+    navigator.clipboard.writeText(lines).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    })
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -81,9 +102,20 @@ export default function EditOrcamentoForm({ orcamento, onClose, toast }: Props) 
               Criado em {new Date(orcamento.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
             </p>
           </div>
-          <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-muted transition-colors">
-            <X className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={handleCopy}
+              className="flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              title="Copiar para WhatsApp"
+            >
+              {copied ? <CheckIcon className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+              {copied ? 'Copiado!' : 'Copiar'}
+            </button>
+            <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-muted transition-colors">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="overflow-y-auto flex-1 p-5">

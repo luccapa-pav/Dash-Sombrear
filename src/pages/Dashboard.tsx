@@ -17,9 +17,11 @@ const ADMIN_EMAIL = 'luccapavanallo@gmail.com'
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('orcamentos')
   const { isDark, toggle } = useTheme()
-  const { data: orcamentos = [], isLoading } = useOrcamentos()
-  const { data: profile } = useProfile()
   const { toasts, toast, dismiss } = useToast()
+  const { data: orcamentos = [], isLoading } = useOrcamentos((novo) => {
+    toast('success', `Novo orçamento: ${novo.cliente ?? novo.responsavel}`)
+  })
+  const { data: profile } = useProfile()
   const isAdmin = profile?.email === ADMIN_EMAIL
   const { data: pendingCount = 0 } = usePendingCount()
 
