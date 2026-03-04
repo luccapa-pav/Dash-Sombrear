@@ -1,6 +1,26 @@
 import type { Orcamento } from '@/lib/supabase'
 import { formatCurrency } from '@/lib/utils'
 
+const AVATAR_COLORS = [
+  'bg-blue-500', 'bg-purple-500', 'bg-pink-500',
+  'bg-indigo-500', 'bg-teal-500', 'bg-cyan-500',
+  'bg-rose-500', 'bg-violet-500',
+]
+function avatarColor(name: string) {
+  let h = 0
+  for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h)
+  return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length]
+}
+function AvatarInitials({ name, size = 'md' }: { name: string; size?: 'sm' | 'md' }) {
+  const initials = name.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase()
+  const sz = size === 'md' ? 'h-8 w-8 text-xs' : 'h-6 w-6 text-[10px]'
+  return (
+    <span className={`inline-flex shrink-0 items-center justify-center rounded-full font-bold text-white ${sz} ${avatarColor(name)}`}>
+      {initials}
+    </span>
+  )
+}
+
 interface Props { data: Orcamento[] }
 
 const MEDALS = ['🥇', '🥈', '🥉']
@@ -39,7 +59,15 @@ export default function RankingResponsavel({ data }: Props) {
             return (
               <div key={name} className={`rounded-lg border p-3 transition-all duration-200 hover:scale-[1.02] hover:shadow-sm cursor-default ${i < 3 ? MEDAL_BG[i] : 'bg-muted/30 border-border'}`}>
                 <div className="flex items-center gap-2.5">
-                  <span className="text-lg shrink-0">{i < 3 ? MEDALS[i] : `${i + 1}º`}</span>
+                  <div className="relative shrink-0">
+                    <AvatarInitials name={name} size="md" />
+                    {i < 3 && (
+                      <span className="absolute -bottom-1 -right-1 text-sm leading-none">{MEDALS[i]}</span>
+                    )}
+                    {i >= 3 && (
+                      <span className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-muted text-[9px] font-bold text-muted-foreground">{i + 1}</span>
+                    )}
+                  </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-sm font-semibold truncate">{name}</span>

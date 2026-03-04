@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { Orcamento } from '@/lib/supabase'
 import { formatCurrency } from '@/lib/utils'
-import { CheckCircle2, DollarSign, FileText, ReceiptText, Pencil, Check } from 'lucide-react'
+import { CheckCircle2, DollarSign, FileText, ReceiptText, TrendingUp, Pencil, Check } from 'lucide-react'
 import { useMonthlyComparison } from '@/hooks/useOrcamentos'
 import { useCountUp } from '@/hooks/useCountUp'
 
@@ -16,12 +16,20 @@ export default function KPIGrid({ data }: Props) {
   const ticketMedio = fechados.length > 0 ? faturamento / fechados.length : 0
   const convRate = totalOrc > 0 ? (fechados.length / totalOrc) * 100 : 0
 
-  // Animações dos valores
+  const comMargem = fechados.filter((o) => o.custo != null && o.custo > 0)
+  const margemMedia = comMargem.length > 0
+    ? comMargem.reduce((s, o) => {
+        const receita = (o.valor_venda ?? 0) + (o.instacao ?? 0)
+        return s + (receita > 0 ? ((receita - (o.custo ?? 0)) / receita) * 100 : 0)
+      }, 0) / comMargem.length
+    : 0
+
   const animFaturamento = useCountUp(faturamento, 950)
   const animFechados = useCountUp(fechados.length, 750)
   const animTotalOrc = useCountUp(totalOrc, 700)
   const animTicket = useCountUp(ticketMedio, 900)
   const animConv = useCountUp(convRate, 800)
+  const animMargem = useCountUp(margemMedia, 850)
 
   const [meta, setMeta] = useState(() => {
     const saved = localStorage.getItem(META_KEY)
@@ -67,15 +75,27 @@ export default function KPIGrid({ data }: Props) {
       highlight: false,
       sub: 'por fechamento',
     },
+    {
+      label: 'Margem Média',
+      value: margemMedia > 0 ? `${animMargem.toFixed(1)}%` : '—',
+      icon: TrendingUp,
+      highlight: false,
+      sub: comMargem.length > 0 ? `${comMargem.length} com custo` : 'sem custo informado',
+    },
   ]
 
   return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-      {/* Faturamento — animado + meta + comparativo */}
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+      {/* Faturamento — animado + meta + shimmer */}
       <div
-        className="animate-in fade-in-0 slide-in-from-bottom-4 duration-500 rounded-xl border border-primary/30 bg-primary/5 dark:bg-primary/10 p-4 shadow-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-elevated cursor-default"
+        className="relative overflow-hidden animate-in fade-in-0 slide-in-from-bottom-4 duration-500 rounded-xl border border-primary/30 bg-primary/5 dark:bg-primary/10 p-4 shadow-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-elevated cursor-default"
         style={{ animationFillMode: 'both', animationDelay: '0ms' }}
       >
+        {/* Shimmer sweep — toca uma vez ao carregar */}
+        <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-xl">
+          <div className="shimmer-sweep h-full w-1/3 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+        </div>
+
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
             <p className="text-xs font-medium text-muted-foreground truncate">Faturamento</p>

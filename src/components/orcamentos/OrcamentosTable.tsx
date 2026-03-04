@@ -1,5 +1,24 @@
 import { useState } from 'react'
 import { Download, ChevronUp, ChevronDown, ChevronsUpDown, StickyNote, Square, CheckSquare, FileDown } from 'lucide-react'
+
+const AVATAR_COLORS = [
+  'bg-blue-500', 'bg-purple-500', 'bg-pink-500',
+  'bg-indigo-500', 'bg-teal-500', 'bg-cyan-500',
+  'bg-rose-500', 'bg-violet-500',
+]
+function avatarColor(name: string) {
+  let h = 0
+  for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h)
+  return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length]
+}
+function AvatarInitials({ name }: { name: string }) {
+  const initials = name.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase()
+  return (
+    <span className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white ${avatarColor(name)}`}>
+      {initials}
+    </span>
+  )
+}
 import * as XLSX from 'xlsx'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
@@ -265,14 +284,28 @@ export default function OrcamentosTable({ data, toast, isFiltered, search = '' }
                   </tr>
                 </thead>
                 <tbody>
-                  {sorted.map((o, i) => (
+                  {sorted.map((o, i) => {
+                    const diasAberto = !o.fechado ? Math.floor((Date.now() - new Date(o.created_at).getTime()) / 86400000) : 0
+                    return (
                     <tr
                       key={o.id}
                       onClick={() => setEditing(o)}
-                      className="border-b last:border-0 hover:bg-muted/30 hover:translate-x-0.5 transition-all duration-150 cursor-pointer"
+                      className={cn(
+                        'border-b last:border-0 hover:bg-muted/30 hover:translate-x-0.5 transition-all duration-150 cursor-pointer',
+                        o.fechado && 'bg-green-500/[0.03] shadow-[inset_3px_0_0_rgb(34_197_94_/_0.35)]'
+                      )}
                     >
                       <td className="px-4 py-3 text-xs text-muted-foreground font-mono">#{i + 1}</td>
-                      <td className="px-4 py-3 text-muted-foreground text-xs">{formatDate(o.created_at)}</td>
+                      <td className="px-4 py-3 text-muted-foreground text-xs">
+                        <span className="flex flex-col leading-tight gap-0.5">
+                          <span>{formatDate(o.created_at)}</span>
+                          {diasAberto > 0 && (
+                            <span className={cn('font-medium', diasAberto > 7 ? 'text-yellow-600 dark:text-yellow-400' : 'text-muted-foreground/60')}>
+                              {diasAberto}d aberto
+                            </span>
+                          )}
+                        </span>
+                      </td>
                       <td className="px-4 py-3 font-medium">
                         <span className="flex items-center gap-1.5">
                           <span className="flex flex-col">
@@ -290,7 +323,12 @@ export default function OrcamentosTable({ data, toast, isFiltered, search = '' }
                           {o.observacoes && <span title={o.observacoes}><StickyNote className="h-3 w-3 shrink-0 text-muted-foreground" /></span>}
                         </span>
                       </td>
-                      <td className="px-4 py-3"><Highlight text={o.responsavel} query={search} /></td>
+                      <td className="px-4 py-3">
+                        <span className="flex items-center gap-2">
+                          <AvatarInitials name={o.responsavel} />
+                          <Highlight text={o.responsavel} query={search} />
+                        </span>
+                      </td>
                       <td className="px-4 py-3">{o.modelo}</td>
                       <td className="px-4 py-3">{o.tecido}</td>
                       <td className="px-4 py-3 text-center">{o.quantidade}</td>
@@ -304,7 +342,8 @@ export default function OrcamentosTable({ data, toast, isFiltered, search = '' }
                       </td>
                       <td className="px-4 py-3"><FechadoCheckbox orcamento={o} /></td>
                     </tr>
-                  ))}
+                    )
+                  })}
                 </tbody>
                 <tfoot>
                   <tr className="border-t bg-muted/40">
@@ -322,25 +361,40 @@ export default function OrcamentosTable({ data, toast, isFiltered, search = '' }
 
             {/* Mobile */}
             <div className="md:hidden divide-y">
-              {sorted.map((o, i) => (
-                <div key={o.id} onClick={() => setEditing(o)} className="px-4 py-4 cursor-pointer hover:bg-muted/20 transition-colors">
+              {sorted.map((o, i) => {
+                const diasAberto = !o.fechado ? Math.floor((Date.now() - new Date(o.created_at).getTime()) / 86400000) : 0
+                return (
+                <div
+                  key={o.id}
+                  onClick={() => setEditing(o)}
+                  className={cn(
+                    'px-4 py-4 cursor-pointer hover:bg-muted/20 transition-colors',
+                    o.fechado && 'bg-green-500/[0.03] shadow-[inset_3px_0_0_rgb(34_197_94_/_0.35)]'
+                  )}
+                >
                   <div className="flex items-center justify-between mb-1.5">
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5">
+                        <AvatarInitials name={o.responsavel} />
                         <span className="text-xs font-mono text-muted-foreground">#{i + 1}</span>
                         <p className="font-semibold text-sm truncate">
                           <Highlight text={o.cliente ?? 'Sem cliente'} query={search} />
                         </p>
                       </div>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs text-muted-foreground mt-0.5 pl-8">
                         <Highlight text={o.responsavel} query={search} /> · {formatDate(o.created_at)}
+                        {diasAberto > 0 && (
+                          <span className={cn('ml-1.5 font-medium', diasAberto > 7 ? 'text-yellow-600 dark:text-yellow-400' : '')}>
+                            · {diasAberto}d aberto
+                          </span>
+                        )}
                       </p>
                     </div>
                     <div className="ml-2 shrink-0">
                       <FechadoCheckbox orcamento={o} />
                     </div>
                   </div>
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between pl-8">
                     <span className="text-xs text-muted-foreground">{o.modelo} · {o.tecido}</span>
                     {o.valor_venda
                       ? <span className="text-sm font-bold text-primary">{formatCurrency(o.valor_venda)}</span>
@@ -348,7 +402,8 @@ export default function OrcamentosTable({ data, toast, isFiltered, search = '' }
                     }
                   </div>
                 </div>
-              ))}
+                )
+              })}
             </div>
           </>
         )}
