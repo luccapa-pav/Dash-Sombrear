@@ -1,0 +1,27 @@
+import { createClient } from '@supabase/supabase-js'
+
+const SUPABASE_URL = 'https://nlswyjpjzibuvdsaooyg.supabase.co'
+const SUPABASE_ANON_KEY = 'sb_publishable_fzqnvcRh3yww4V_2nATdTg_4V_o_Mi3'
+
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+export type Orcamento = {
+  id: string
+  created_at: string
+  responsavel: string
+  cliente?: string | null
+  largura: number
+  altura: number
+  modelo: string
+  tecido: string
+  quantidade: number
+  cor_ferragem_motor: string
+  acabamentos?: string | null
+  custo?: number | null
+  custo_acabamento?: number | null
+  custo_m2?: number | null
+  status: 'PENDENTE' | 'FEITO' | 'ERRO'
+  valor_venda?: number | null
+  custo_total?: number | null
+  margem?: number | null
+}

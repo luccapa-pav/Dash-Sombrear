@@ -1,0 +1,93 @@
+import type { Orcamento } from '@/lib/supabase'
+import { formatCurrency } from '@/lib/utils'
+import { Calculator, TrendingDown, Calendar, BarChart2 } from 'lucide-react'
+
+interface Props {
+  data: Orcamento[]
+}
+
+export default function TabCalculoCusto({ data }: Props) {
+  const comCusto = data.filter((o) => o.custo != null && o.custo > 0)
+
+  const totalMes = comCusto.reduce((s, o) => s + (o.custo_total ?? o.custo ?? 0), 0)
+
+  const hoje = new Date()
+  const inicioSemana = new Date(hoje)
+  inicioSemana.setDate(hoje.getDate() - hoje.getDay())
+  const usosSemana = comCusto.filter((o) => new Date(o.created_at) >= inicioSemana).length
+
+  const diasNoMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate()
+  const mediaDiaria = totalMes / diasNoMes
+
+  const custoPorModelo = comCusto.reduce<Record<string, { total: number; count: number }>>((acc, o) => {
+    const k = o.modelo
+    if (!acc[k]) acc[k] = { total: 0, count: 0 }
+    acc[k].total += o.custo_total ?? o.custo ?? 0
+    acc[k].count += 1
+    return acc
+  }, {})
+
+  return (
+    <div className="space-y-6">
+      {/* KPIs */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {[
+          { label: 'Total no Mês', value: formatCurrency(totalMes), icon: TrendingDown, highlight: true },
+          { label: 'Usos na Semana', value: usosSemana, icon: Calendar, highlight: false },
+          { label: 'Média Diária', value: formatCurrency(mediaDiaria), icon: BarChart2, highlight: false },
+        ].map(({ label, value, icon: Icon, highlight }) => (
+          <div
+            key={label}
+            className={`rounded-xl border p-5 shadow-sm ${highlight ? 'border-primary/30 bg-primary/5' : 'bg-card'}`}
+          >
+            <div className="flex items-center gap-3">
+              <div className={`rounded-lg p-2 ${highlight ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                <Icon className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">{label}</p>
+                <p className="font-display text-2xl font-bold">{value}</p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Custo por modelo */}
+      <div className="rounded-xl border bg-card shadow-sm">
+        <div className="flex items-center gap-2 border-b px-5 py-4">
+          <Calculator className="h-5 w-5 text-primary" />
+          <h2 className="font-display font-semibold">Custo por Modelo</h2>
+        </div>
+        {Object.keys(custoPorModelo).length === 0 ? (
+          <div className="px-5 py-10 text-center text-sm text-muted-foreground">
+            Nenhum orçamento com custo registrado ainda.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/40">
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Modelo</th>
+                  <th className="px-5 py-3 text-center font-medium text-muted-foreground">Qtd. Orçamentos</th>
+                  <th className="px-5 py-3 text-right font-medium text-muted-foreground">Custo Total</th>
+                  <th className="px-5 py-3 text-right font-medium text-muted-foreground">Custo Médio</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(custoPorModelo).map(([modelo, { total, count }]) => (
+                  <tr key={modelo} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
+                    <td className="px-5 py-3.5 font-medium">{modelo}</td>
+                    <td className="px-5 py-3.5 text-center">{count}</td>
+                    <td className="px-5 py-3.5 text-right">{formatCurrency(total)}</td>
+                    <td className="px-5 py-3.5 text-right">{formatCurrency(total / count)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
