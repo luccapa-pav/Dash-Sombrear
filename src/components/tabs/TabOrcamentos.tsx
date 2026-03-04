@@ -20,6 +20,7 @@ export default function TabOrcamentos({ data, loading, toast }: Props) {
   const [responsavel, setResponsavel] = useState('todos')
   const [modelo, setModelo] = useState('todos')
   const [status, setStatus] = useState('todos')
+  const [periodo, setPeriodo] = useState('todos')
 
   const filtered = data.filter((o) => {
     const matchSearch = !search || [o.cliente, o.responsavel, o.modelo, o.tecido]
@@ -27,7 +28,22 @@ export default function TabOrcamentos({ data, loading, toast }: Props) {
     const matchResp = responsavel === 'todos' || o.responsavel === responsavel
     const matchModelo = modelo === 'todos' || o.modelo === modelo
     const matchStatus = status === 'todos' || o.status === status
-    return matchSearch && matchResp && matchModelo && matchStatus
+
+    let matchPeriodo = true
+    if (periodo !== 'todos' && o.created_at) {
+      const created = new Date(o.created_at)
+      const now = new Date()
+      if (periodo === 'hoje') {
+        matchPeriodo = created.toDateString() === now.toDateString()
+      } else if (periodo === 'semana') {
+        const weekAgo = new Date(now); weekAgo.setDate(now.getDate() - 7)
+        matchPeriodo = created >= weekAgo
+      } else if (periodo === 'mes') {
+        matchPeriodo = created.getMonth() === now.getMonth() && created.getFullYear() === now.getFullYear()
+      }
+    }
+
+    return matchSearch && matchResp && matchModelo && matchStatus && matchPeriodo
   })
 
   const responsaveis = [...new Set(data.map((o) => o.responsavel))].filter(Boolean)
@@ -54,6 +70,7 @@ export default function TabOrcamentos({ data, loading, toast }: Props) {
         responsavel={responsavel} onResponsavelChange={setResponsavel}
         modelo={modelo} onModeloChange={setModelo}
         status={status} onStatusChange={setStatus}
+        periodo={periodo} onPeriodoChange={setPeriodo}
         responsaveis={responsaveis}
         modelos={modelos}
       />

@@ -5,13 +5,21 @@ interface Props {
   responsavel: string; onResponsavelChange: (v: string) => void
   modelo: string; onModeloChange: (v: string) => void
   status: string; onStatusChange: (v: string) => void
+  periodo: string; onPeriodoChange: (v: string) => void
   responsaveis: string[]
   modelos: string[]
 }
 
 const selectClass = 'flex-1 min-w-[140px] rounded-lg border bg-card px-3 py-2.5 text-sm outline-none ring-ring focus:ring-2 cursor-pointer'
 
-export default function FiltersBar({ search, onSearchChange, responsavel, onResponsavelChange, modelo, onModeloChange, status, onStatusChange, responsaveis, modelos }: Props) {
+const PERIODOS = [
+  { value: 'todos', label: 'Tudo' },
+  { value: 'hoje', label: 'Hoje' },
+  { value: 'semana', label: 'Semana' },
+  { value: 'mes', label: 'Mês' },
+]
+
+export default function FiltersBar({ search, onSearchChange, responsavel, onResponsavelChange, modelo, onModeloChange, status, onStatusChange, periodo, onPeriodoChange, responsaveis, modelos }: Props) {
   return (
     <div className="flex flex-col gap-3">
       <div className="relative">
@@ -24,6 +32,21 @@ export default function FiltersBar({ search, onSearchChange, responsavel, onResp
         />
       </div>
       <div className="flex flex-wrap gap-2">
+        <div className="flex gap-1 rounded-lg bg-muted/60 p-1">
+          {PERIODOS.map(({ value, label }) => (
+            <button
+              key={value}
+              onClick={() => onPeriodoChange(value)}
+              className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-all ${
+                periodo === value
+                  ? 'bg-card text-primary shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         <select value={responsavel} onChange={(e) => onResponsavelChange(e.target.value)} className={selectClass}>
           <option value="todos">Todos responsáveis</option>
           {responsaveis.map((r) => <option key={r} value={r}>{r}</option>)}
