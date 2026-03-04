@@ -3,6 +3,7 @@ import type { Orcamento } from '@/lib/supabase'
 import { formatCurrency } from '@/lib/utils'
 import { CheckCircle2, DollarSign, FileText, ReceiptText, Pencil, Check } from 'lucide-react'
 import { useMonthlyComparison } from '@/hooks/useOrcamentos'
+import { useCountUp } from '@/hooks/useCountUp'
 
 const META_KEY = 'sombrear-meta-mensal'
 
@@ -13,6 +14,14 @@ export default function KPIGrid({ data }: Props) {
   const faturamento = fechados.reduce((s, o) => s + (o.valor_venda ?? 0), 0)
   const totalOrc = data.length
   const ticketMedio = fechados.length > 0 ? faturamento / fechados.length : 0
+  const convRate = totalOrc > 0 ? (fechados.length / totalOrc) * 100 : 0
+
+  // Animações dos valores
+  const animFaturamento = useCountUp(faturamento, 950)
+  const animFechados = useCountUp(fechados.length, 750)
+  const animTotalOrc = useCountUp(totalOrc, 700)
+  const animTicket = useCountUp(ticketMedio, 900)
+  const animConv = useCountUp(convRate, 800)
 
   const [meta, setMeta] = useState(() => {
     const saved = localStorage.getItem(META_KEY)
@@ -29,6 +38,7 @@ export default function KPIGrid({ data }: Props) {
   }
 
   const metaPct = meta > 0 ? Math.min((faturamento / meta) * 100, 100) : 0
+  const animMetaPct = useCountUp(metaPct, 1100)
 
   const { data: monthly } = useMonthlyComparison()
   const pctChange = monthly && monthly.previousMonth > 0
@@ -38,21 +48,21 @@ export default function KPIGrid({ data }: Props) {
   const kpis = [
     {
       label: 'Fechamentos',
-      value: String(fechados.length),
+      value: String(Math.round(animFechados)),
       icon: CheckCircle2,
       highlight: true,
-      sub: `${totalOrc > 0 ? ((fechados.length / totalOrc) * 100).toFixed(0) : 0}% conversão`,
+      sub: `${Math.round(animConv)}% conversão`,
     },
     {
       label: 'Orçamentos',
-      value: String(totalOrc),
+      value: String(Math.round(animTotalOrc)),
       icon: FileText,
       highlight: false,
       sub: 'no período',
     },
     {
       label: 'Ticket Médio',
-      value: ticketMedio > 0 ? formatCurrency(ticketMedio) : '—',
+      value: ticketMedio > 0 ? formatCurrency(animTicket) : '—',
       icon: ReceiptText,
       highlight: false,
       sub: 'por fechamento',
@@ -61,23 +71,28 @@ export default function KPIGrid({ data }: Props) {
 
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-      {/* Faturamento com meta e comparativo */}
-      <div className="rounded-xl border border-primary/30 bg-primary/5 dark:bg-primary/10 p-4 shadow-sm">
+      {/* Faturamento — animado + meta + comparativo */}
+      <div
+        className="animate-in fade-in-0 slide-in-from-bottom-4 duration-500 rounded-xl border border-primary/30 bg-primary/5 dark:bg-primary/10 p-4 shadow-sm"
+        style={{ animationFillMode: 'both', animationDelay: '0ms' }}
+      >
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
             <p className="text-xs font-medium text-muted-foreground truncate">Faturamento</p>
-            <p className="font-display mt-1 text-xl font-bold truncate text-primary">{formatCurrency(faturamento)}</p>
+            <p className="font-display mt-1 text-xl font-bold truncate text-primary tabular-nums">
+              {formatCurrency(animFaturamento)}
+            </p>
 
             {meta > 0 ? (
               <div className="mt-1.5">
                 <div className="h-1.5 w-full rounded-full bg-primary/20 overflow-hidden">
                   <div
-                    className="h-full rounded-full bg-brand-gradient transition-all duration-700"
-                    style={{ width: `${metaPct}%` }}
+                    className="h-full rounded-full bg-brand-gradient"
+                    style={{ width: `${animMetaPct}%` }}
                   />
                 </div>
-                <p className="mt-0.5 text-xs text-muted-foreground truncate">
-                  {metaPct.toFixed(0)}% de {formatCurrency(meta)}
+                <p className="mt-0.5 text-xs text-muted-foreground truncate tabular-nums">
+                  {Math.round(animMetaPct)}% de {formatCurrency(meta)}
                 </p>
               </div>
             ) : pctChange !== null ? (
@@ -126,18 +141,19 @@ export default function KPIGrid({ data }: Props) {
         )}
       </div>
 
-      {kpis.map(({ label, value, icon: Icon, highlight, sub }) => (
+      {kpis.map(({ label, value, icon: Icon, highlight, sub }, i) => (
         <div
           key={label}
-          className={`rounded-xl border p-4 shadow-sm ${highlight ? 'border-primary/30 bg-primary/5 dark:bg-primary/10' : 'bg-card'}`}
+          className={`animate-in fade-in-0 slide-in-from-bottom-4 duration-500 rounded-xl border p-4 shadow-sm ${highlight ? 'border-primary/30 bg-primary/5 dark:bg-primary/10' : 'bg-card'}`}
+          style={{ animationFillMode: 'both', animationDelay: `${(i + 1) * 80}ms` }}
         >
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
               <p className="text-xs font-medium text-muted-foreground truncate">{label}</p>
-              <p className={`font-display mt-1 text-xl font-bold truncate ${highlight ? 'text-primary' : ''}`}>
+              <p className={`font-display mt-1 text-xl font-bold truncate tabular-nums ${highlight ? 'text-primary' : ''}`}>
                 {value}
               </p>
-              <p className="mt-0.5 text-xs text-muted-foreground truncate">{sub}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground truncate tabular-nums">{sub}</p>
             </div>
             <div className={`shrink-0 rounded-lg p-1.5 ${highlight ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}>
               <Icon className="h-4 w-4" />

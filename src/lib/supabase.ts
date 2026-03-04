@@ -25,4 +25,5 @@ export type Orcamento = {
   custo_total?: number | null
   margem?: number | null
   observacoes?: string | null
+  fonte?: string | null
 }

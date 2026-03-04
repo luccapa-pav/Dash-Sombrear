@@ -1,6 +1,8 @@
 import type { Orcamento } from '@/lib/supabase'
 import { formatCurrency } from '@/lib/utils'
-import { Bot, TrendingUp, TrendingDown, Minus } from 'lucide-react'
+import { Bot, TrendingUp, TrendingDown, Minus, FileDown } from 'lucide-react'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   AreaChart, Area, CartesianGrid,
@@ -121,6 +123,137 @@ const tooltipStyle = {
   labelStyle: { fontWeight: 600, color: 'hsl(var(--foreground))' },
 }
 
+function exportPDF(data: Orcamento[]) {
+  const doc = new jsPDF()
+  const now = new Date()
+  const orange: [number, number, number] = [232, 112, 26]
+
+  // Header
+  doc.setFillColor(...orange)
+  doc.rect(0, 0, 210, 28, 'F')
+  doc.setTextColor(255, 255, 255)
+  doc.setFontSize(18)
+  doc.setFont('helvetica', 'bold')
+  doc.text('Loja Sombrear', 14, 12)
+  doc.setFontSize(10)
+  doc.setFont('helvetica', 'normal')
+  doc.text('Relatório de Orçamentos', 14, 20)
+  doc.text(`Gerado em ${now.toLocaleDateString('pt-BR')} às ${now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`, 210 - 14, 20, { align: 'right' })
+
+  // KPIs do mês atual
+  const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+  const thisMonth = data.filter((o) => {
+    const d = new Date(o.created_at)
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+  })
+  const lastMonth = data.filter((o) => {
+    const d = new Date(o.created_at)
+    return d.getMonth() === lastMonthDate.getMonth() && d.getFullYear() === lastMonthDate.getFullYear()
+  })
+  const thisFat = thisMonth.filter((o) => o.status === 'FEITO').reduce((s, o) => s + (o.valor_venda ?? 0), 0)
+  const lastFat = lastMonth.filter((o) => o.status === 'FEITO').reduce((s, o) => s + (o.valor_venda ?? 0), 0)
+  const thisConv = thisMonth.length > 0 ? (thisMonth.filter((o) => o.status === 'FEITO').length / thisMonth.length) * 100 : 0
+  const fechados = data.filter((o) => o.status === 'FEITO')
+  const faturamentoTotal = fechados.reduce((s, o) => s + (o.valor_venda ?? 0), 0)
+
+  doc.setTextColor(40, 40, 40)
+  doc.setFontSize(13)
+  doc.setFont('helvetica', 'bold')
+  doc.text('Resumo do Período', 14, 38)
+
+  const kpis = [
+    ['Total de orçamentos', String(data.length)],
+    ['Orçamentos fechados', String(fechados.length)],
+    ['Taxa de conversão', `${data.length > 0 ? ((fechados.length / data.length) * 100).toFixed(0) : 0}%`],
+    ['Faturamento total', formatCurrency(faturamentoTotal)],
+    ['Faturamento mês atual', formatCurrency(thisFat)],
+    ['Faturamento mês anterior', formatCurrency(lastFat)],
+    ['Orçamentos este mês', String(thisMonth.length)],
+    ['Conversão mês atual', `${thisConv.toFixed(0)}%`],
+  ]
+
+  autoTable(doc, {
+    startY: 42,
+    head: [['Indicador', 'Valor']],
+    body: kpis,
+    theme: 'grid',
+    headStyles: { fillColor: orange, textColor: 255, fontStyle: 'bold', fontSize: 9 },
+    bodyStyles: { fontSize: 9 },
+    columnStyles: { 1: { fontStyle: 'bold', halign: 'right' } },
+    margin: { left: 14, right: 14 },
+  })
+
+  // Ranking responsáveis
+  const byResp = Object.entries(
+    data.reduce<Record<string, { total: number; feitos: number; fat: number }>>((acc, o) => {
+      if (!acc[o.responsavel]) acc[o.responsavel] = { total: 0, feitos: 0, fat: 0 }
+      acc[o.responsavel].total++
+      if (o.status === 'FEITO') { acc[o.responsavel].feitos++; acc[o.responsavel].fat += o.valor_venda ?? 0 }
+      return acc
+    }, {})
+  )
+    .map(([name, s]) => [name, String(s.total), String(s.feitos), `${s.total > 0 ? ((s.feitos / s.total) * 100).toFixed(0) : 0}%`, formatCurrency(s.fat)])
+    .sort((a, b) => Number(b[4].replace(/\D/g, '')) - Number(a[4].replace(/\D/g, '')))
+
+  const afterKpi = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8
+
+  doc.setFontSize(13)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(40, 40, 40)
+  doc.text('Ranking de Responsáveis', 14, afterKpi)
+
+  autoTable(doc, {
+    startY: afterKpi + 4,
+    head: [['Responsável', 'Orçamentos', 'Fechados', 'Conversão', 'Faturamento']],
+    body: byResp,
+    theme: 'striped',
+    headStyles: { fillColor: orange, textColor: 255, fontStyle: 'bold', fontSize: 9 },
+    bodyStyles: { fontSize: 9 },
+    columnStyles: { 4: { fontStyle: 'bold', halign: 'right' } },
+    margin: { left: 14, right: 14 },
+  })
+
+  // Tabela de orçamentos fechados
+  const afterRanking = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8
+  const fechadosRows = fechados
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .map((o) => [
+      new Date(o.created_at).toLocaleDateString('pt-BR'),
+      o.cliente ?? '—',
+      o.responsavel,
+      o.modelo,
+      o.tecido,
+      o.valor_venda ? formatCurrency(o.valor_venda) : '—',
+    ])
+
+  doc.setFontSize(13)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(40, 40, 40)
+  doc.text('Orçamentos Fechados', 14, afterRanking)
+
+  autoTable(doc, {
+    startY: afterRanking + 4,
+    head: [['Data', 'Cliente', 'Responsável', 'Modelo', 'Tecido', 'Valor']],
+    body: fechadosRows,
+    theme: 'striped',
+    headStyles: { fillColor: orange, textColor: 255, fontStyle: 'bold', fontSize: 8 },
+    bodyStyles: { fontSize: 8 },
+    columnStyles: { 5: { fontStyle: 'bold', halign: 'right' } },
+    margin: { left: 14, right: 14 },
+  })
+
+  // Footer on each page
+  const pageCount = doc.getNumberOfPages()
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i)
+    doc.setFontSize(8)
+    doc.setTextColor(160, 160, 160)
+    doc.text(`Loja Sombrear · Página ${i} de ${pageCount}`, 105, 290, { align: 'center' })
+  }
+
+  doc.save(`relatorio-sombrear-${now.toISOString().slice(0, 10)}.pdf`)
+}
+
 export default function TabAnalises({ data }: Props) {
   const monthly = getMonthlyData(data)
   const daily = getDailyTrend(data)
@@ -169,6 +302,18 @@ export default function TabAnalises({ data }: Props) {
 
   return (
     <div className="space-y-5">
+      {/* Header com botão PDF */}
+      <div className="flex items-center justify-between">
+        <div />
+        <button
+          onClick={() => exportPDF(data)}
+          className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+        >
+          <FileDown className="h-3.5 w-3.5" />
+          Exportar PDF
+        </button>
+      </div>
+
       {/* Comparativo mês a mês */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {comparisons.map(({ label, value, delta }) => (

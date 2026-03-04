@@ -1,14 +1,63 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Download, ChevronUp, ChevronDown, ChevronsUpDown, StickyNote } from 'lucide-react'
 import type { Orcamento } from '@/lib/supabase'
 import { formatCurrency } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import EditOrcamentoForm from './EditOrcamentoForm'
+import { useUpdateOrcamento } from '@/hooks/useOrcamentos'
 
 const STATUS_STYLES: Record<string, string> = {
   PENDENTE: 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400',
   FEITO: 'bg-green-500/10 text-green-600 dark:text-green-400',
   ERRO: 'bg-destructive/10 text-destructive',
+}
+
+const STATUS_DOT: Record<string, string> = {
+  PENDENTE: 'bg-yellow-500',
+  FEITO: 'bg-green-500',
+  ERRO: 'bg-destructive',
+}
+
+function StatusBadge({ orcamento }: { orcamento: Orcamento }) {
+  const [open, setOpen] = useState(false)
+  const { mutate: updateStatus, isPending } = useUpdateOrcamento()
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  return (
+    <div ref={ref} className="relative" onClick={(e) => e.stopPropagation()}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        disabled={isPending}
+        className={cn('rounded-full px-2.5 py-1 text-xs font-semibold transition-opacity', STATUS_STYLES[orcamento.status], isPending && 'opacity-50')}
+      >
+        {orcamento.status}
+      </button>
+      {open && (
+        <div className="absolute top-full mt-1 left-0 z-30 min-w-[120px] rounded-lg border bg-card shadow-elevated overflow-hidden animate-in fade-in-0 slide-in-from-top-2 duration-150">
+          {(['PENDENTE', 'FEITO', 'ERRO'] as const).map((s) => (
+            <button
+              key={s}
+              onClick={() => { updateStatus({ id: orcamento.id, status: s }); setOpen(false) }}
+              className="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium hover:bg-muted transition-colors"
+            >
+              <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', STATUS_DOT[s])} />
+              {s}
+              {orcamento.status === s && <span className="ml-auto text-primary">✓</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 function formatDate(iso: string) {
@@ -152,11 +201,7 @@ export default function OrcamentosTable({ data, toast, isFiltered }: Props) {
                       <td className="px-4 py-3">{o.tecido}</td>
                       <td className="px-4 py-3 text-center">{o.quantidade}</td>
                       <td className="px-4 py-3">{o.valor_venda ? formatCurrency(o.valor_venda) : '—'}</td>
-                      <td className="px-4 py-3">
-                        <span className={cn('rounded-full px-2.5 py-1 text-xs font-semibold', STATUS_STYLES[o.status])}>
-                          {o.status}
-                        </span>
-                      </td>
+                      <td className="px-4 py-3"><StatusBadge orcamento={o} /></td>
                     </tr>
                   ))}
                 </tbody>
@@ -175,9 +220,9 @@ export default function OrcamentosTable({ data, toast, isFiltered }: Props) {
                       </div>
                       <p className="text-xs text-muted-foreground">{o.responsavel} · {formatDate(o.created_at)}</p>
                     </div>
-                    <span className={cn('ml-2 shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold', STATUS_STYLES[o.status])}>
-                      {o.status}
-                    </span>
+                    <div className="ml-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                      <StatusBadge orcamento={o} />
+                    </div>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-muted-foreground">{o.modelo} · {o.tecido}</span>
