@@ -4,7 +4,11 @@ import { supabase } from '@/lib/supabase'
 import { CheckCircle2, XCircle, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-export default function PainelAdmin() {
+interface Props {
+  toast: (type: 'success' | 'error', message: string) => void
+}
+
+export default function PainelAdmin({ toast }: Props) {
   const { data: profiles = [], isLoading } = useAllProfiles()
   const qc = useQueryClient()
 
@@ -13,7 +17,11 @@ export default function PainelAdmin() {
       const { error } = await supabase.from('profiles').update({ approved }).eq('id', id)
       if (error) throw error
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['profiles'] }),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ['profiles'] })
+      toast('success', vars.approved ? 'Usuário aprovado!' : 'Acesso revogado.')
+    },
+    onError: () => toast('error', 'Erro ao atualizar usuário.'),
   })
 
   const pendentes = profiles.filter((p) => !p.approved)

@@ -12,9 +12,10 @@ import ModelosChart from '@/components/charts/ModelosChart'
 interface Props {
   data: Orcamento[]
   loading: boolean
+  toast: (type: 'success' | 'error', message: string) => void
 }
 
-export default function TabOrcamentos({ data, loading }: Props) {
+export default function TabOrcamentos({ data, loading, toast }: Props) {
   const [search, setSearch] = useState('')
   const [responsavel, setResponsavel] = useState('todos')
   const [modelo, setModelo] = useState('todos')
@@ -41,11 +42,11 @@ export default function TabOrcamentos({ data, loading }: Props) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <KPIGrid data={filtered} />
 
       <div className="flex justify-end">
-        <NovoOrcamentoForm />
+        <NovoOrcamentoForm toast={toast} />
       </div>
 
       <FiltersBar
@@ -57,13 +58,12 @@ export default function TabOrcamentos({ data, loading }: Props) {
         modelos={modelos}
       />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <ResponsavelChart data={filtered} />
         <ModelosChart data={filtered} />
       </div>
 
       <OrcamentosFechadosCard data={filtered} />
-
       <OrcamentosTable data={filtered} />
     </div>
   )

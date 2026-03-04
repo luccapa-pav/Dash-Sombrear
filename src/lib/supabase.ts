@@ -10,12 +10,12 @@ export type Orcamento = {
   created_at: string
   responsavel: string
   cliente?: string | null
-  largura: number
-  altura: number
+  largura?: number | null
+  altura?: number | null
   modelo: string
   tecido: string
   quantidade: number
-  cor_ferragem_motor: string
+  cor_ferragem_motor?: string | null
   acabamentos?: string | null
   custo?: number | null
   custo_acabamento?: number | null
