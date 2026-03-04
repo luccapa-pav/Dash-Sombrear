@@ -140,7 +140,7 @@ export default function OrcamentosTable({ data, toast, isFiltered }: Props) {
           {data.length > 0 && (
             <button
               onClick={() => exportCSV(sorted)}
-              className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground hover:scale-105 active:scale-95 transition-all duration-150"
             >
               <Download className="h-3.5 w-3.5" />
               Exportar CSV
@@ -186,7 +186,7 @@ export default function OrcamentosTable({ data, toast, isFiltered }: Props) {
                     <tr
                       key={o.id}
                       onClick={() => setEditing(o)}
-                      className="border-b last:border-0 hover:bg-muted/30 transition-colors cursor-pointer"
+                      className="border-b last:border-0 hover:bg-muted/30 hover:translate-x-0.5 transition-all duration-150 cursor-pointer"
                     >
                       <td className="px-4 py-3 text-xs text-muted-foreground font-mono">#{i + 1}</td>
                       <td className="px-4 py-3 text-muted-foreground text-xs">{formatDate(o.created_at)}</td>

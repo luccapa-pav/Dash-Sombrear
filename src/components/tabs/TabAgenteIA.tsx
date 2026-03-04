@@ -32,7 +32,7 @@ export default function TabAgenteIA({ data }: Props) {
         {kpis.map(({ label, value, icon: Icon }, i) => (
           <div
             key={label}
-            className="animate-in fade-in-0 slide-in-from-bottom-4 duration-500 rounded-xl border bg-card p-4 shadow-sm"
+            className="animate-in fade-in-0 slide-in-from-bottom-4 duration-500 rounded-xl border bg-card p-4 shadow-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-elevated cursor-default"
             style={{ animationFillMode: 'both', animationDelay: `${i * 80}ms` }}
           >
             <div className="flex items-start justify-between gap-2">

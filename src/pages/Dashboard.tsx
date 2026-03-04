@@ -40,7 +40,7 @@ export default function Dashboard() {
       <header className="sticky top-0 z-50 border-b bg-card/90 backdrop-blur-md shadow-sm">
         <div className="mx-auto flex max-w-[1600px] items-center justify-between px-4 py-3 md:px-6">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-gradient shadow-brand">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-gradient shadow-brand transition-transform duration-200 hover:scale-110 cursor-default">
               <span className="font-display text-base font-bold text-white">S</span>
             </div>
             <div>
@@ -52,11 +52,10 @@ export default function Dashboard() {
           </div>
 
           <div className="flex items-center gap-1">
-            {/* Badge de pendentes no header para admin */}
             {isAdmin && pendingCount > 0 && (
               <button
                 onClick={() => setActiveTab('admin')}
-                className="relative rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                className="relative rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground hover:scale-110 transition-all duration-150 active:scale-95"
                 title="Aprovações pendentes"
               >
                 <ShieldCheck className="h-4 w-4" />
@@ -65,10 +64,10 @@ export default function Dashboard() {
                 </span>
               </button>
             )}
-            <button onClick={toggle} className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+            <button onClick={toggle} className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground hover:scale-110 transition-all duration-150 active:scale-95">
               {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </button>
-            <button onClick={() => supabase.auth.signOut()} className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors" title="Sair">
+            <button onClick={() => supabase.auth.signOut()} className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground hover:scale-110 transition-all duration-150 active:scale-95" title="Sair">
               <LogOut className="h-4 w-4" />
             </button>
           </div>
@@ -83,10 +82,10 @@ export default function Dashboard() {
               key={id}
               onClick={() => setActiveTab(id)}
               className={cn(
-                'relative flex shrink-0 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold transition-all whitespace-nowrap',
+                'relative flex shrink-0 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold transition-all duration-200 whitespace-nowrap active:scale-95',
                 activeTab === id
-                  ? 'bg-card text-primary shadow-elevated'
-                  : 'text-muted-foreground hover:text-foreground',
+                  ? 'bg-card text-primary shadow-elevated scale-[1.02]'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-card/50',
               )}
             >
               <Icon className="h-4 w-4 shrink-0" />
@@ -100,11 +99,13 @@ export default function Dashboard() {
           ))}
         </div>
 
-        {activeTab === 'orcamentos' && <TabOrcamentos data={orcamentos} loading={isLoading} toast={toast} />}
-        {activeTab === 'analises' && <TabAnalises data={orcamentos} />}
-        {activeTab === 'agente-ia' && <TabAgenteIA data={orcamentos} />}
-        {activeTab === 'calculo-custo' && <TabCalculoCusto data={orcamentos} />}
-        {activeTab === 'admin' && isAdmin && <PainelAdmin toast={toast} />}
+        <div key={activeTab} className="animate-in fade-in-0 slide-in-from-bottom-2 duration-200">
+          {activeTab === 'orcamentos' && <TabOrcamentos data={orcamentos} loading={isLoading} toast={toast} />}
+          {activeTab === 'analises' && <TabAnalises data={orcamentos} />}
+          {activeTab === 'agente-ia' && <TabAgenteIA data={orcamentos} />}
+          {activeTab === 'calculo-custo' && <TabCalculoCusto data={orcamentos} />}
+          {activeTab === 'admin' && isAdmin && <PainelAdmin toast={toast} />}
+        </div>
       </main>
 
       <Toaster toasts={toasts} onDismiss={dismiss} />

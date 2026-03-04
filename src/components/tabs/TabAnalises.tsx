@@ -307,7 +307,7 @@ export default function TabAnalises({ data }: Props) {
         <div />
         <button
           onClick={() => exportPDF(data)}
-          className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground hover:scale-105 active:scale-95 transition-all duration-150"
         >
           <FileDown className="h-3.5 w-3.5" />
           Exportar PDF
@@ -317,7 +317,7 @@ export default function TabAnalises({ data }: Props) {
       {/* Comparativo mês a mês */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {comparisons.map(({ label, value, delta }) => (
-          <div key={label} className="rounded-xl border bg-card p-4 shadow-sm">
+          <div key={label} className="rounded-xl border bg-card p-4 shadow-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-elevated cursor-default">
             <p className="text-xs font-medium text-muted-foreground truncate">{label}</p>
             <p className="font-display mt-1 text-xl font-bold truncate">{value}</p>
             <div className="mt-0.5">{delta ?? <span className="text-xs text-muted-foreground">base de comparação</span>}</div>
@@ -326,7 +326,7 @@ export default function TabAnalises({ data }: Props) {
       </div>
 
       {/* Faturamento mensal */}
-      <div className="rounded-xl border bg-card p-5 shadow-sm">
+      <div className="rounded-xl border bg-card p-5 shadow-sm transition-all duration-200 hover:shadow-elevated">
         <h3 className="mb-4 font-display font-semibold">Faturamento mensal (últimos 6 meses)</h3>
         {monthly.every((m) => m.faturamento === 0) ? (
           <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">Sem dados de faturamento</div>
@@ -344,7 +344,7 @@ export default function TabAnalises({ data }: Props) {
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         {/* Volume mensal */}
-        <div className="rounded-xl border bg-card p-5 shadow-sm">
+        <div className="rounded-xl border bg-card p-5 shadow-sm transition-all duration-200 hover:shadow-elevated">
           <h3 className="mb-4 font-display font-semibold">Volume de orçamentos (últimos 6 meses)</h3>
           <ResponsiveContainer width="100%" height={180}>
             <BarChart data={monthly} margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
@@ -357,7 +357,7 @@ export default function TabAnalises({ data }: Props) {
         </div>
 
         {/* Tendência diária */}
-        <div className="rounded-xl border bg-card p-5 shadow-sm">
+        <div className="rounded-xl border bg-card p-5 shadow-sm transition-all duration-200 hover:shadow-elevated">
           <h3 className="mb-4 font-display font-semibold">Tendência diária — {now.toLocaleDateString('pt-BR', { month: 'long' })}</h3>
           {daily.length === 0 ? (
             <div className="flex h-[180px] items-center justify-center text-sm text-muted-foreground">Sem dados este mês</div>
@@ -382,7 +382,7 @@ export default function TabAnalises({ data }: Props) {
       </div>
 
       {/* Insights IA */}
-      <div className="rounded-xl border bg-card p-5 shadow-sm">
+      <div className="rounded-xl border bg-card p-5 shadow-sm transition-all duration-200 hover:shadow-elevated">
         <div className="flex items-center gap-2 mb-4">
           <div className="rounded-lg bg-primary/10 p-1.5">
             <Bot className="h-4 w-4 text-primary" />

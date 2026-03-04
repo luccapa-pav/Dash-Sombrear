@@ -48,10 +48,10 @@ export default function FiltersBar({ search, onSearchChange, responsavel, onResp
             <button
               key={value}
               onClick={() => onPeriodoChange(value)}
-              className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-all ${
+              className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-all duration-150 active:scale-95 ${
                 periodo === value
-                  ? 'bg-card text-primary shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
+                  ? 'bg-card text-primary shadow-sm scale-[1.04]'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-card/60'
               }`}
             >
               {label}

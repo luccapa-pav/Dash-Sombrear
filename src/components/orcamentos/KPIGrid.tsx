@@ -73,7 +73,7 @@ export default function KPIGrid({ data }: Props) {
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
       {/* Faturamento — animado + meta + comparativo */}
       <div
-        className="animate-in fade-in-0 slide-in-from-bottom-4 duration-500 rounded-xl border border-primary/30 bg-primary/5 dark:bg-primary/10 p-4 shadow-sm"
+        className="animate-in fade-in-0 slide-in-from-bottom-4 duration-500 rounded-xl border border-primary/30 bg-primary/5 dark:bg-primary/10 p-4 shadow-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-elevated cursor-default"
         style={{ animationFillMode: 'both', animationDelay: '0ms' }}
       >
         <div className="flex items-start justify-between gap-2">
@@ -144,7 +144,7 @@ export default function KPIGrid({ data }: Props) {
       {kpis.map(({ label, value, icon: Icon, highlight, sub }, i) => (
         <div
           key={label}
-          className={`animate-in fade-in-0 slide-in-from-bottom-4 duration-500 rounded-xl border p-4 shadow-sm ${highlight ? 'border-primary/30 bg-primary/5 dark:bg-primary/10' : 'bg-card'}`}
+          className={`animate-in fade-in-0 slide-in-from-bottom-4 duration-500 rounded-xl border p-4 shadow-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-elevated cursor-default ${highlight ? 'border-primary/30 bg-primary/5 dark:bg-primary/10' : 'bg-card'}`}
           style={{ animationFillMode: 'both', animationDelay: `${(i + 1) * 80}ms` }}
         >
           <div className="flex items-start justify-between gap-2">

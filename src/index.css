@@ -50,7 +50,40 @@
     @apply border-border;
   }
 
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
     @apply bg-background text-foreground font-sans;
+  }
+
+  /* Seleção de texto com cor da marca */
+  ::selection {
+    background: hsl(var(--primary) / 0.18);
+    color: hsl(var(--foreground));
+  }
+
+  /* Scrollbar fina e discreta */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 99px; }
+  ::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / 0.4); }
+
+  @keyframes fab-pulse {
+    0%   { box-shadow: 0 4px 24px -4px rgba(232,112,26,0.35), 0 0 0 0 rgba(232,112,26,0.4); }
+    60%  { box-shadow: 0 4px 24px -4px rgba(232,112,26,0.35), 0 0 0 14px rgba(232,112,26,0); }
+    100% { box-shadow: 0 4px 24px -4px rgba(232,112,26,0.35), 0 0 0 0 rgba(232,112,26,0); }
+  }
+}
+
+@layer utilities {
+  .fab-pulse {
+    animation: fab-pulse 2.5s ease-out infinite;
+  }
+
+  /* Disable transitions during theme toggle */
+  .no-transition * {
+    transition: none !important;
   }
 }

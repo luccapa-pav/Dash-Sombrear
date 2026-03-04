@@ -37,7 +37,7 @@ export default function RankingResponsavel({ data }: Props) {
             const topValue = ranked[0].value
             const pct = topValue > 0 ? (value / topValue) * 100 : 0
             return (
-              <div key={name} className={`rounded-lg border p-3 ${i < 3 ? MEDAL_BG[i] : 'bg-muted/30 border-border'}`}>
+              <div key={name} className={`rounded-lg border p-3 transition-all duration-200 hover:scale-[1.02] hover:shadow-sm cursor-default ${i < 3 ? MEDAL_BG[i] : 'bg-muted/30 border-border'}`}>
                 <div className="flex items-center gap-2.5">
                   <span className="text-lg shrink-0">{i < 3 ? MEDALS[i] : `${i + 1}º`}</span>
                   <div className="flex-1 min-w-0">

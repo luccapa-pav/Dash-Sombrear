@@ -87,7 +87,7 @@ export default function TabOrcamentos({ data, loading, toast }: Props) {
         <div className="hidden md:flex justify-end">
           <button
             onClick={() => setFormOpen(true)}
-            className="flex items-center gap-2 rounded-lg bg-brand-gradient px-4 py-2.5 text-sm font-semibold text-white shadow-brand hover:opacity-90 transition-opacity active:scale-95"
+            className="flex items-center gap-2 rounded-lg bg-brand-gradient px-4 py-2.5 text-sm font-semibold text-white shadow-brand hover:opacity-90 hover:scale-105 active:scale-95 transition-all duration-150"
           >
             <Plus className="h-4 w-4" />
             Novo Orçamento
@@ -117,7 +117,7 @@ export default function TabOrcamentos({ data, loading, toast }: Props) {
       {/* Mobile FAB */}
       <button
         onClick={() => setFormOpen(true)}
-        className="fixed bottom-6 right-4 z-40 md:hidden flex h-14 w-14 items-center justify-center rounded-full bg-brand-gradient shadow-brand text-white hover:opacity-90 active:scale-95 transition-all"
+        className="fixed bottom-6 right-4 z-40 md:hidden flex h-14 w-14 items-center justify-center rounded-full bg-brand-gradient text-white hover:scale-110 active:scale-90 transition-all duration-200 fab-pulse"
         aria-label="Novo Orçamento"
       >
         <Plus className="h-6 w-6" />
