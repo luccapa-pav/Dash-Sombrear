@@ -28,10 +28,10 @@ export default function Dashboard() {
 
   const TABS = [
     { id: 'orcamentos', label: 'Orçamentos', icon: FileText, badge: 0 },
-    { id: 'analises', label: 'Análises', icon: BarChart2, badge: 0 },
     { id: 'agente-ia', label: 'Agente IA', icon: Bot, badge: 0 },
     { id: 'calculo-custo', label: 'Custo', icon: Calculator, badge: 0 },
     ...(isAdmin ? [{ id: 'admin', label: 'Usuários', icon: ShieldCheck, badge: pendingCount }] : []),
+    { id: 'analises', label: 'Análises', icon: BarChart2, badge: 0 },
   ]
 
   return (
