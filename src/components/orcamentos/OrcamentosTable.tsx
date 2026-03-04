@@ -23,7 +23,7 @@ export default function OrcamentosTable({ data }: Props) {
         </div>
       ) : (
         <>
-          {/* Desktop: tabela */}
+          {/* Desktop */}
           <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -53,25 +53,25 @@ export default function OrcamentosTable({ data }: Props) {
             </table>
           </div>
 
-          {/* Mobile: cards */}
+          {/* Mobile */}
           <div className="md:hidden divide-y">
             {data.map((o) => (
-              <div key={o.id} className="px-4 py-3.5 space-y-2">
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className="font-semibold text-sm">{o.cliente ?? 'Sem cliente'}</p>
+              <div key={o.id} className="px-4 py-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-sm truncate">{o.cliente ?? 'Sem cliente'}</p>
                     <p className="text-xs text-muted-foreground">{o.responsavel}</p>
                   </div>
-                  <span className={cn('rounded-full px-2.5 py-1 text-xs font-semibold shrink-0', STATUS_STYLES[o.status])}>
+                  <span className={cn('ml-2 shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold', STATUS_STYLES[o.status])}>
                     {o.status}
                   </span>
                 </div>
-                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                  <span><strong className="text-foreground">{o.modelo}</strong> · {o.tecido}</span>
-                  <span>Qtd: {o.quantidade}</span>
-                  {o.valor_venda && (
-                    <span className="font-semibold text-primary">{formatCurrency(o.valor_venda)}</span>
-                  )}
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">{o.modelo} · {o.tecido}</span>
+                  {o.valor_venda
+                    ? <span className="text-sm font-bold text-primary">{formatCurrency(o.valor_venda)}</span>
+                    : <span className="text-xs text-muted-foreground">Sem valor</span>
+                  }
                 </div>
               </div>
             ))}

@@ -66,14 +66,14 @@ export default function Dashboard() {
       </header>
 
       <main className="mx-auto max-w-[1600px] px-4 py-4 md:px-6 md:py-6">
-        {/* Tabs — scrollable no mobile */}
+        {/* Tabs */}
         <div className="mb-6 flex gap-1 rounded-xl bg-muted/60 p-1 overflow-x-auto scrollbar-none">
           {TABS.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               onClick={() => setActiveTab(id)}
               className={cn(
-                'flex flex-1 min-w-0 shrink-0 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold transition-all whitespace-nowrap',
+                'flex shrink-0 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold transition-all whitespace-nowrap',
                 activeTab === id
                   ? 'bg-card text-primary shadow-elevated'
                   : 'text-muted-foreground hover:text-foreground',

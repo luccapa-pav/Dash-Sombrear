@@ -1,8 +1,7 @@
 import { useAllProfiles } from '@/hooks/useProfile'
 import { useQueryClient, useMutation } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { CheckCircle2, XCircle, Users } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { Check, X, Users, CheckCircle2 } from 'lucide-react'
 
 interface Props {
   toast: (type: 'success' | 'error', message: string) => void
@@ -41,27 +40,27 @@ export default function PainelAdmin({ toast }: Props) {
           </div>
           <div className="divide-y">
             {pendentes.map((p) => (
-              <div key={p.id} className="flex items-center justify-between px-5 py-3.5">
-                <div>
-                  <p className="font-medium">{p.full_name || 'Sem nome'}</p>
-                  <p className="text-sm text-muted-foreground">{p.email}</p>
+              <div key={p.id} className="flex items-center justify-between gap-3 px-5 py-3.5">
+                <div className="min-w-0">
+                  <p className="font-medium truncate">{p.full_name || 'Sem nome'}</p>
+                  <p className="text-sm text-muted-foreground truncate">{p.email}</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex shrink-0 gap-2">
                   <button
                     onClick={() => approve.mutate({ id: p.id, approved: true })}
                     disabled={approve.isPending}
-                    className="flex items-center gap-1.5 rounded-lg bg-green-500/10 px-3 py-1.5 text-xs font-semibold text-green-600 hover:bg-green-500/20 transition-colors disabled:opacity-50"
+                    title="Aprovar"
+                    className="flex h-9 w-9 items-center justify-center rounded-lg bg-green-500/10 text-green-600 hover:bg-green-500/25 transition-colors disabled:opacity-50"
                   >
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                    Aprovar
+                    <Check className="h-4 w-4" />
                   </button>
                   <button
                     onClick={() => approve.mutate({ id: p.id, approved: false })}
                     disabled={approve.isPending}
-                    className="flex items-center gap-1.5 rounded-lg bg-destructive/10 px-3 py-1.5 text-xs font-semibold text-destructive hover:bg-destructive/20 transition-colors disabled:opacity-50"
+                    title="Recusar"
+                    className="flex h-9 w-9 items-center justify-center rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors disabled:opacity-50"
                   >
-                    <XCircle className="h-3.5 w-3.5" />
-                    Recusar
+                    <X className="h-4 w-4" />
                   </button>
                 </div>
               </div>
@@ -84,21 +83,19 @@ export default function PainelAdmin({ toast }: Props) {
         ) : (
           <div className="divide-y">
             {aprovados.map((p) => (
-              <div key={p.id} className="flex items-center justify-between px-5 py-3.5">
-                <div>
-                  <p className="font-medium">{p.full_name || 'Sem nome'}</p>
-                  <p className="text-sm text-muted-foreground">{p.email}</p>
+              <div key={p.id} className="flex items-center justify-between gap-3 px-5 py-3.5">
+                <div className="min-w-0">
+                  <p className="font-medium truncate">{p.full_name || 'Sem nome'}</p>
+                  <p className="text-sm text-muted-foreground truncate">{p.email}</p>
                 </div>
                 {p.email !== 'luccapavanallo@gmail.com' && (
                   <button
                     onClick={() => approve.mutate({ id: p.id, approved: false })}
                     disabled={approve.isPending}
-                    className={cn(
-                      'rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors',
-                      'bg-muted text-muted-foreground hover:bg-destructive/10 hover:text-destructive',
-                    )}
+                    title="Revogar acesso"
+                    className="flex shrink-0 h-9 w-9 items-center justify-center rounded-lg bg-muted text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors disabled:opacity-50"
                   >
-                    Revogar
+                    <X className="h-4 w-4" />
                   </button>
                 )}
               </div>
