@@ -38,7 +38,9 @@ export default function Dashboard() {
             </div>
             <div>
               <h1 className="font-display text-lg font-bold leading-none text-foreground">Sombrear</h1>
-              <p className="text-xs text-muted-foreground">Insights</p>
+              <p className="text-xs text-muted-foreground">
+                {profile?.full_name ? profile.full_name.split(' ')[0] : 'Dashboard'}
+              </p>
             </div>
           </div>
 
