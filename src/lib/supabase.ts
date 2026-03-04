@@ -20,11 +20,9 @@ export type Orcamento = {
   custo?: number | null
   custo_acabamento?: number | null
   custo_m2?: number | null
-  status: 'PENDENTE' | 'FEITO' | 'ERRO'
   fechado?: boolean | null
   telefone?: string | null
   valor_venda?: number | null
-  custo_total?: number | null
   margem?: number | null
   observacoes?: string | null
   fonte?: string | null

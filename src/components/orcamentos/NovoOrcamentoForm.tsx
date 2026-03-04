@@ -40,7 +40,6 @@ export default function NovoOrcamentoForm({ toast, open, onClose }: Props) {
         cor_ferragem_motor: form.cor_ferragem_motor || null,
         acabamentos: form.acabamentos || null,
         valor_venda: form.valor_venda ? Number(form.valor_venda) : null,
-        status: 'PENDENTE',
         fechado: false,
         observacoes: form.observacoes || null,
       })

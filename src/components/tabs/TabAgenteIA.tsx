@@ -1,13 +1,7 @@
 import type { Orcamento } from '@/lib/supabase'
 import { Bot, TrendingUp, DollarSign, FileText } from 'lucide-react'
-import { formatCurrency, cn } from '@/lib/utils'
+import { formatCurrency } from '@/lib/utils'
 import { useCountUp } from '@/hooks/useCountUp'
-
-const STATUS_STYLES: Record<string, string> = {
-  PENDENTE: 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400',
-  FEITO: 'bg-green-500/10 text-green-600 dark:text-green-400',
-  ERRO: 'bg-destructive/10 text-destructive',
-}
 
 interface Props { data: Orcamento[] }
 
@@ -81,8 +75,8 @@ export default function TabAgenteIA({ data }: Props) {
                       <td className="px-5 py-3.5">{o.tecido}</td>
                       <td className="px-5 py-3.5 font-medium">{o.valor_venda ? formatCurrency(o.valor_venda) : '—'}</td>
                       <td className="px-5 py-3.5">
-                        <span className={cn('rounded-full px-2.5 py-1 text-xs font-semibold', STATUS_STYLES[o.status])}>
-                          {o.status}
+                        <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${o.fechado ? 'bg-green-500/10 text-green-600 dark:text-green-400' : 'bg-muted text-muted-foreground'}`}>
+                          {o.fechado ? 'Fechado' : 'Em aberto'}
                         </span>
                       </td>
                     </tr>
@@ -97,8 +91,8 @@ export default function TabAgenteIA({ data }: Props) {
                 <div key={o.id} className="px-4 py-4">
                   <div className="flex items-center justify-between mb-1">
                     <p className="font-semibold text-sm">{o.cliente ?? 'Sem cliente'}</p>
-                    <span className={cn('rounded-full px-2.5 py-1 text-xs font-semibold', STATUS_STYLES[o.status])}>
-                      {o.status}
+                    <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${o.fechado ? 'bg-green-500/10 text-green-600 dark:text-green-400' : 'bg-muted text-muted-foreground'}`}>
+                      {o.fechado ? 'Fechado' : 'Em aberto'}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
