@@ -32,6 +32,7 @@ export default function EditOrcamentoForm({ orcamento, onClose, toast }: Props) 
     acabamentos: orcamento.acabamentos ?? '',
     valor_venda: orcamento.valor_venda?.toString() ?? '',
     status: orcamento.status ?? 'PENDENTE',
+    observacoes: orcamento.observacoes ?? '',
   })
 
   function set(key: string, value: string) {
@@ -50,6 +51,7 @@ export default function EditOrcamentoForm({ orcamento, onClose, toast }: Props) 
       orcamento.cor_ferragem_motor ? `Ferragem/Motor: ${orcamento.cor_ferragem_motor}` : null,
       orcamento.acabamentos ? `Acabamentos: ${orcamento.acabamentos}` : null,
       orcamento.valor_venda ? `Valor: ${formatCurrency(orcamento.valor_venda)}` : null,
+      orcamento.observacoes ? `Obs: ${orcamento.observacoes}` : null,
     ].filter(Boolean).join('\n')
 
     navigator.clipboard.writeText(lines).then(() => {
@@ -74,6 +76,7 @@ export default function EditOrcamentoForm({ orcamento, onClose, toast }: Props) 
         acabamentos: form.acabamentos || null,
         valor_venda: form.valor_venda ? Number(form.valor_venda) : null,
         status: form.status as Orcamento['status'],
+        observacoes: form.observacoes || null,
       })
       toast('success', 'Orçamento atualizado!')
       onClose()
@@ -169,6 +172,16 @@ export default function EditOrcamentoForm({ orcamento, onClose, toast }: Props) 
                 <option value="FEITO">Feito</option>
                 <option value="ERRO">Erro</option>
               </select>
+            </div>
+            <div className="col-span-2">
+              <label className={labelClass}>Observações</label>
+              <textarea
+                value={form.observacoes}
+                onChange={(e) => set('observacoes', e.target.value)}
+                className={cn(inputClass, 'resize-none')}
+                rows={3}
+                placeholder="Endereço de instalação, detalhes extras..."
+              />
             </div>
           </div>
 

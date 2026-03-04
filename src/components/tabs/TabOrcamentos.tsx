@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Plus } from 'lucide-react'
 import type { Orcamento } from '@/lib/supabase'
 import KPIGrid from '@/components/orcamentos/KPIGrid'
 import OrcamentosFechadosCard from '@/components/orcamentos/OrcamentosFechadosCard'
@@ -15,9 +16,9 @@ interface Props {
   toast: (type: 'success' | 'error', message: string) => void
 }
 
-function SkeletonCard({ wide = false }: { wide?: boolean }) {
+function SkeletonCard() {
   return (
-    <div className={`rounded-xl border bg-card p-4 shadow-sm animate-pulse ${wide ? 'col-span-2 lg:col-span-4' : ''}`}>
+    <div className="rounded-xl border bg-card p-4 shadow-sm animate-pulse">
       <div className="h-3 w-20 rounded bg-muted mb-3" />
       <div className="h-7 w-28 rounded bg-muted mb-2" />
       <div className="h-3 w-16 rounded bg-muted" />
@@ -26,6 +27,7 @@ function SkeletonCard({ wide = false }: { wide?: boolean }) {
 }
 
 export default function TabOrcamentos({ data, loading, toast }: Props) {
+  const [formOpen, setFormOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [responsavel, setResponsavel] = useState('todos')
   const [modelo, setModelo] = useState('todos')
@@ -67,9 +69,7 @@ export default function TabOrcamentos({ data, loading, toast }: Props) {
           <SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard />
         </div>
         <div className="rounded-xl border bg-card shadow-sm animate-pulse">
-          <div className="border-b px-5 py-4">
-            <div className="h-5 w-48 rounded bg-muted" />
-          </div>
+          <div className="border-b px-5 py-4"><div className="h-5 w-48 rounded bg-muted" /></div>
           <div className="p-5 space-y-3">
             {[...Array(5)].map((_, i) => <div key={i} className="h-10 rounded bg-muted" />)}
           </div>
@@ -79,31 +79,51 @@ export default function TabOrcamentos({ data, loading, toast }: Props) {
   }
 
   return (
-    <div className="space-y-5">
-      <KPIGrid data={filtered} />
+    <>
+      <div className="space-y-5">
+        <KPIGrid data={filtered} />
 
-      <div className="flex justify-end">
-        <NovoOrcamentoForm toast={toast} />
+        {/* Desktop button */}
+        <div className="hidden md:flex justify-end">
+          <button
+            onClick={() => setFormOpen(true)}
+            className="flex items-center gap-2 rounded-lg bg-brand-gradient px-4 py-2.5 text-sm font-semibold text-white shadow-brand hover:opacity-90 transition-opacity active:scale-95"
+          >
+            <Plus className="h-4 w-4" />
+            Novo Orçamento
+          </button>
+        </div>
+
+        <FiltersBar
+          search={search} onSearchChange={setSearch}
+          responsavel={responsavel} onResponsavelChange={setResponsavel}
+          modelo={modelo} onModeloChange={setModelo}
+          status={status} onStatusChange={setStatus}
+          periodo={periodo} onPeriodoChange={setPeriodo}
+          responsaveis={responsaveis}
+          modelos={modelos}
+        />
+
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+          <RankingResponsavel data={filtered} />
+          <ResponsavelChart data={filtered} />
+          <ModelosChart data={filtered} />
+        </div>
+
+        <OrcamentosFechadosCard data={filtered} />
+        <OrcamentosTable data={filtered} toast={toast} isFiltered={isFiltered} />
       </div>
 
-      <FiltersBar
-        search={search} onSearchChange={setSearch}
-        responsavel={responsavel} onResponsavelChange={setResponsavel}
-        modelo={modelo} onModeloChange={setModelo}
-        status={status} onStatusChange={setStatus}
-        periodo={periodo} onPeriodoChange={setPeriodo}
-        responsaveis={responsaveis}
-        modelos={modelos}
-      />
+      {/* Mobile FAB */}
+      <button
+        onClick={() => setFormOpen(true)}
+        className="fixed bottom-6 right-4 z-40 md:hidden flex h-14 w-14 items-center justify-center rounded-full bg-brand-gradient shadow-brand text-white hover:opacity-90 active:scale-95 transition-all"
+        aria-label="Novo Orçamento"
+      >
+        <Plus className="h-6 w-6" />
+      </button>
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-        <RankingResponsavel data={filtered} />
-        <ResponsavelChart data={filtered} />
-        <ModelosChart data={filtered} />
-      </div>
-
-      <OrcamentosFechadosCard data={filtered} />
-      <OrcamentosTable data={filtered} toast={toast} isFiltered={isFiltered} />
-    </div>
+      <NovoOrcamentoForm toast={toast} open={formOpen} onClose={() => setFormOpen(false)} />
+    </>
   )
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Download, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
+import { Download, ChevronUp, ChevronDown, ChevronsUpDown, StickyNote } from 'lucide-react'
 import type { Orcamento } from '@/lib/supabase'
 import { formatCurrency } from '@/lib/utils'
 import { cn } from '@/lib/utils'
@@ -141,7 +141,12 @@ export default function OrcamentosTable({ data, toast, isFiltered }: Props) {
                     >
                       <td className="px-4 py-3 text-xs text-muted-foreground font-mono">#{i + 1}</td>
                       <td className="px-4 py-3 text-muted-foreground text-xs">{formatDate(o.created_at)}</td>
-                      <td className="px-4 py-3 font-medium">{o.cliente ?? '—'}</td>
+                      <td className="px-4 py-3 font-medium">
+                        <span className="flex items-center gap-1.5">
+                          {o.cliente ?? '—'}
+                          {o.observacoes && <StickyNote className="h-3 w-3 shrink-0 text-muted-foreground" title={o.observacoes} />}
+                        </span>
+                      </td>
                       <td className="px-4 py-3">{o.responsavel}</td>
                       <td className="px-4 py-3">{o.modelo}</td>
                       <td className="px-4 py-3">{o.tecido}</td>

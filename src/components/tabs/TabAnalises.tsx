@@ -1,0 +1,259 @@
+import type { Orcamento } from '@/lib/supabase'
+import { formatCurrency } from '@/lib/utils'
+import { Bot, TrendingUp, TrendingDown, Minus } from 'lucide-react'
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  AreaChart, Area, CartesianGrid,
+} from 'recharts'
+
+interface Props { data: Orcamento[] }
+
+function getMonthlyData(data: Orcamento[]) {
+  const now = new Date()
+  return Array.from({ length: 6 }, (_, i) => {
+    const date = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1)
+    const m = date.getMonth()
+    const y = date.getFullYear()
+    const monthData = data.filter((o) => {
+      const d = new Date(o.created_at)
+      return d.getMonth() === m && d.getFullYear() === y
+    })
+    return {
+      mes: date.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', ''),
+      faturamento: monthData.filter((o) => o.status === 'FEITO').reduce((s, o) => s + (o.valor_venda ?? 0), 0),
+      total: monthData.length,
+    }
+  })
+}
+
+function getDailyTrend(data: Orcamento[]) {
+  const now = new Date()
+  const today = now.getDate()
+  const counts: Record<number, number> = {}
+  data
+    .filter((o) => {
+      const d = new Date(o.created_at)
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+    })
+    .forEach((o) => {
+      const day = new Date(o.created_at).getDate()
+      counts[day] = (counts[day] ?? 0) + 1
+    })
+  return Array.from({ length: today }, (_, i) => ({ dia: i + 1, orçamentos: counts[i + 1] ?? 0 }))
+}
+
+function generateInsights(data: Orcamento[]): string[] {
+  const insights: string[] = []
+  const now = new Date()
+  const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+
+  const thisMonth = data.filter((o) => {
+    const d = new Date(o.created_at)
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+  })
+  const lastMonth = data.filter((o) => {
+    const d = new Date(o.created_at)
+    return d.getMonth() === lastMonthDate.getMonth() && d.getFullYear() === lastMonthDate.getFullYear()
+  })
+
+  const thisFat = thisMonth.filter((o) => o.status === 'FEITO').reduce((s, o) => s + (o.valor_venda ?? 0), 0)
+  const lastFat = lastMonth.filter((o) => o.status === 'FEITO').reduce((s, o) => s + (o.valor_venda ?? 0), 0)
+
+  if (lastFat > 0 && thisFat > 0) {
+    const pct = ((thisFat - lastFat) / lastFat) * 100
+    if (pct > 5) insights.push(`Faturamento cresceu ${pct.toFixed(0)}% em relação ao mês anterior — bom ritmo de vendas.`)
+    else if (pct < -5) insights.push(`Faturamento caiu ${Math.abs(pct).toFixed(0)}% em relação ao mês anterior — vale reforçar o acompanhamento dos leads.`)
+    else insights.push(`Faturamento estável em relação ao mês anterior.`)
+  }
+
+  const byResp = Object.entries(
+    data.reduce<Record<string, { total: number; feitos: number }>>((acc, o) => {
+      if (!acc[o.responsavel]) acc[o.responsavel] = { total: 0, feitos: 0 }
+      acc[o.responsavel].total++
+      if (o.status === 'FEITO') acc[o.responsavel].feitos++
+      return acc
+    }, {})
+  )
+    .map(([name, s]) => ({ name, ...s, taxa: s.total > 0 ? s.feitos / s.total : 0 }))
+    .filter((r) => r.total >= 3)
+    .sort((a, b) => b.taxa - a.taxa)
+
+  if (byResp.length > 0) {
+    const best = byResp[0]
+    insights.push(`${best.name} tem a melhor taxa de conversão: ${(best.taxa * 100).toFixed(0)}% (${best.feitos} de ${best.total} fechados).`)
+  }
+
+  const byModelo = Object.entries(
+    data.reduce<Record<string, number>>((acc, o) => { acc[o.modelo] = (acc[o.modelo] ?? 0) + 1; return acc }, {})
+  ).sort((a, b) => b[1] - a[1])
+
+  if (byModelo.length > 0 && data.length > 0) {
+    const [modelo, count] = byModelo[0]
+    insights.push(`Modelo mais solicitado: ${modelo} (${((count / data.length) * 100).toFixed(0)}% dos orçamentos).`)
+  }
+
+  const thisFechados = thisMonth.filter((o) => o.status === 'FEITO')
+  const lastFechados = lastMonth.filter((o) => o.status === 'FEITO')
+  if (thisFechados.length > 0 && lastFechados.length > 0 && thisFat > 0 && lastFat > 0) {
+    const thisAvg = thisFat / thisFechados.length
+    const lastAvg = lastFat / lastFechados.length
+    const pct = ((thisAvg - lastAvg) / lastAvg) * 100
+    if (Math.abs(pct) > 5) {
+      insights.push(`Ticket médio ${pct > 0 ? 'subiu' : 'caiu'} ${Math.abs(pct).toFixed(0)}% — de ${formatCurrency(lastAvg)} para ${formatCurrency(thisAvg)}.`)
+    }
+  }
+
+  if (thisMonth.length > 0 && lastMonth.length > 0) {
+    const pct = ((thisMonth.length - lastMonth.length) / lastMonth.length) * 100
+    if (pct > 15) insights.push(`Volume de orçamentos cresceu ${pct.toFixed(0)}% vs mês anterior — pipeline aquecido.`)
+    else if (pct < -15) insights.push(`Volume de orçamentos caiu ${Math.abs(pct).toFixed(0)}% vs mês anterior — vale prospectar mais ativamente.`)
+  }
+
+  if (insights.length === 0) {
+    insights.push('Dados insuficientes para análise. Continue registrando orçamentos para ver os insights.')
+  }
+
+  return insights
+}
+
+const tooltipStyle = {
+  contentStyle: { borderRadius: 8, border: '1px solid hsl(var(--border))', background: 'hsl(var(--card))' },
+  labelStyle: { fontWeight: 600, color: 'hsl(var(--foreground))' },
+}
+
+export default function TabAnalises({ data }: Props) {
+  const monthly = getMonthlyData(data)
+  const daily = getDailyTrend(data)
+  const insights = generateInsights(data)
+
+  const now = new Date()
+  const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+
+  const thisMonth = data.filter((o) => {
+    const d = new Date(o.created_at)
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+  })
+  const lastMonth = data.filter((o) => {
+    const d = new Date(o.created_at)
+    return d.getMonth() === lastMonthDate.getMonth() && d.getFullYear() === lastMonthDate.getFullYear()
+  })
+
+  const thisFat = thisMonth.filter((o) => o.status === 'FEITO').reduce((s, o) => s + (o.valor_venda ?? 0), 0)
+  const lastFat = lastMonth.filter((o) => o.status === 'FEITO').reduce((s, o) => s + (o.valor_venda ?? 0), 0)
+  const fatPct = lastFat > 0 ? ((thisFat - lastFat) / lastFat) * 100 : null
+
+  const thisConv = thisMonth.length > 0 ? (thisMonth.filter((o) => o.status === 'FEITO').length / thisMonth.length) * 100 : 0
+  const lastConv = lastMonth.length > 0 ? (lastMonth.filter((o) => o.status === 'FEITO').length / lastMonth.length) * 100 : 0
+  const convPct = lastConv > 0 ? thisConv - lastConv : null
+
+  const volPct = lastMonth.length > 0 ? ((thisMonth.length - lastMonth.length) / lastMonth.length) * 100 : null
+
+  function Delta({ pct, suffix = '%' }: { pct: number | null; suffix?: string }) {
+    if (pct === null) return <span className="text-xs text-muted-foreground">—</span>
+    const Icon = pct > 0 ? TrendingUp : pct < 0 ? TrendingDown : Minus
+    const color = pct > 0 ? 'text-green-600 dark:text-green-400' : pct < 0 ? 'text-destructive' : 'text-muted-foreground'
+    return (
+      <span className={`flex items-center gap-0.5 text-xs font-medium ${color}`}>
+        <Icon className="h-3 w-3" />
+        {Math.abs(pct).toFixed(0)}{suffix} vs mês ant.
+      </span>
+    )
+  }
+
+  const comparisons = [
+    { label: 'Faturamento este mês', value: formatCurrency(thisFat), delta: <Delta pct={fatPct} suffix="%" /> },
+    { label: 'Mês anterior', value: formatCurrency(lastFat), delta: null },
+    { label: 'Orçamentos este mês', value: String(thisMonth.length), delta: <Delta pct={volPct} suffix="%" /> },
+    { label: 'Conversão este mês', value: `${thisConv.toFixed(0)}%`, delta: <Delta pct={convPct} suffix="pp" /> },
+  ]
+
+  return (
+    <div className="space-y-5">
+      {/* Comparativo mês a mês */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {comparisons.map(({ label, value, delta }) => (
+          <div key={label} className="rounded-xl border bg-card p-4 shadow-sm">
+            <p className="text-xs font-medium text-muted-foreground truncate">{label}</p>
+            <p className="font-display mt-1 text-xl font-bold truncate">{value}</p>
+            <div className="mt-0.5">{delta ?? <span className="text-xs text-muted-foreground">base de comparação</span>}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Faturamento mensal */}
+      <div className="rounded-xl border bg-card p-5 shadow-sm">
+        <h3 className="mb-4 font-display font-semibold">Faturamento mensal (últimos 6 meses)</h3>
+        {monthly.every((m) => m.faturamento === 0) ? (
+          <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">Sem dados de faturamento</div>
+        ) : (
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={monthly} margin={{ top: 0, right: 0, bottom: 0, left: -10 }}>
+              <XAxis dataKey="mes" tick={{ fontSize: 12 }} />
+              <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
+              <Tooltip {...tooltipStyle} formatter={(v: number) => [formatCurrency(v), 'Faturamento']} />
+              <Bar dataKey="faturamento" radius={[6, 6, 0, 0]} fill="#E8701A" fillOpacity={0.85} />
+            </BarChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        {/* Volume mensal */}
+        <div className="rounded-xl border bg-card p-5 shadow-sm">
+          <h3 className="mb-4 font-display font-semibold">Volume de orçamentos (últimos 6 meses)</h3>
+          <ResponsiveContainer width="100%" height={180}>
+            <BarChart data={monthly} margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
+              <XAxis dataKey="mes" tick={{ fontSize: 12 }} />
+              <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
+              <Tooltip {...tooltipStyle} formatter={(v: number) => [v, 'Orçamentos']} />
+              <Bar dataKey="total" radius={[6, 6, 0, 0]} fill="hsl(var(--primary))" fillOpacity={0.4} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Tendência diária */}
+        <div className="rounded-xl border bg-card p-5 shadow-sm">
+          <h3 className="mb-4 font-display font-semibold">Tendência diária — {now.toLocaleDateString('pt-BR', { month: 'long' })}</h3>
+          {daily.length === 0 ? (
+            <div className="flex h-[180px] items-center justify-center text-sm text-muted-foreground">Sem dados este mês</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={180}>
+              <AreaChart data={daily} margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
+                <defs>
+                  <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#E8701A" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#E8701A" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="dia" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                <Tooltip {...tooltipStyle} formatter={(v: number) => [v, 'Orçamentos']} />
+                <Area type="monotone" dataKey="orçamentos" stroke="#E8701A" strokeWidth={2} fill="url(#areaGrad)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </div>
+
+      {/* Insights IA */}
+      <div className="rounded-xl border bg-card p-5 shadow-sm">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="rounded-lg bg-primary/10 p-1.5">
+            <Bot className="h-4 w-4 text-primary" />
+          </div>
+          <h3 className="font-display font-semibold">Análise Automática</h3>
+          <span className="ml-auto text-xs text-muted-foreground">baseado nos dados atuais</span>
+        </div>
+        <ul className="space-y-2.5">
+          {insights.map((insight, i) => (
+            <li key={i} className="flex items-start gap-2.5 text-sm">
+              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+              {insight}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  )
+}

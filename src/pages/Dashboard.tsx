@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { FileText, Bot, Calculator, Sun, Moon, LogOut, ShieldCheck } from 'lucide-react'
+import { FileText, Bot, Calculator, Sun, Moon, LogOut, ShieldCheck, BarChart2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useTheme } from '@/hooks/useTheme'
 import { useOrcamentos } from '@/hooks/useOrcamentos'
@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/useToast'
 import TabOrcamentos from '@/components/tabs/TabOrcamentos'
 import TabAgenteIA from '@/components/tabs/TabAgenteIA'
 import TabCalculoCusto from '@/components/tabs/TabCalculoCusto'
+import TabAnalises from '@/components/tabs/TabAnalises'
 import PainelAdmin from '@/components/admin/PainelAdmin'
 import Toaster from '@/components/ui/Toaster'
 import { cn } from '@/lib/utils'
@@ -27,6 +28,7 @@ export default function Dashboard() {
 
   const TABS = [
     { id: 'orcamentos', label: 'Orçamentos', icon: FileText, badge: 0 },
+    { id: 'analises', label: 'Análises', icon: BarChart2, badge: 0 },
     { id: 'agente-ia', label: 'Agente IA', icon: Bot, badge: 0 },
     { id: 'calculo-custo', label: 'Custo', icon: Calculator, badge: 0 },
     ...(isAdmin ? [{ id: 'admin', label: 'Usuários', icon: ShieldCheck, badge: pendingCount }] : []),
@@ -99,6 +101,7 @@ export default function Dashboard() {
         </div>
 
         {activeTab === 'orcamentos' && <TabOrcamentos data={orcamentos} loading={isLoading} toast={toast} />}
+        {activeTab === 'analises' && <TabAnalises data={orcamentos} />}
         {activeTab === 'agente-ia' && <TabAgenteIA data={orcamentos} />}
         {activeTab === 'calculo-custo' && <TabCalculoCusto data={orcamentos} />}
         {activeTab === 'admin' && isAdmin && <PainelAdmin toast={toast} />}
