@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Download, ChevronUp, ChevronDown, ChevronsUpDown, StickyNote, Square, CheckSquare, FileDown } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Download, ChevronUp, ChevronDown, ChevronsUpDown, StickyNote, Square, CheckSquare, FileDown, ChevronLeft, ChevronRight } from 'lucide-react'
 
 const AVATAR_COLORS = [
   'bg-blue-500', 'bg-purple-500', 'bg-pink-500',
@@ -28,12 +28,42 @@ import { cn } from '@/lib/utils'
 import EditOrcamentoForm from './EditOrcamentoForm'
 import { useUpdateOrcamento } from '@/hooks/useOrcamentos'
 
-function FechadoCheckbox({ orcamento }: { orcamento: Orcamento }) {
+const PAGE_SIZE = 50
+
+// TAREFA B: FechadoCheckbox com botão Desfazer
+function FechadoCheckbox({ orcamento, toast }: { orcamento: Orcamento; toast: (type: 'success' | 'error', message: string) => void }) {
   const { mutate: update, isPending } = useUpdateOrcamento()
+  const [showUndo, setShowUndo] = useState(false)
+  const [prevFechado, setPrevFechado] = useState(orcamento.fechado)
+  const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  function handleClick() {
+    const wasFechado = orcamento.fechado
+    update({ id: orcamento.id, fechado: !orcamento.fechado }, {
+      onSuccess: () => {
+        setPrevFechado(!!wasFechado)
+        setShowUndo(true)
+        if (undoTimer.current) clearTimeout(undoTimer.current)
+        undoTimer.current = setTimeout(() => setShowUndo(false), 5000)
+      },
+    })
+  }
+
+  function handleUndo(e: React.MouseEvent) {
+    e.stopPropagation()
+    update({ id: orcamento.id, fechado: prevFechado })
+    setShowUndo(false)
+    if (undoTimer.current) clearTimeout(undoTimer.current)
+  }
+
+  useEffect(() => {
+    return () => { if (undoTimer.current) clearTimeout(undoTimer.current) }
+  }, [])
+
   return (
-    <div onClick={(e) => e.stopPropagation()}>
+    <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-1">
       <button
-        onClick={() => update({ id: orcamento.id, fechado: !orcamento.fechado })}
+        onClick={handleClick}
         disabled={isPending}
         className={cn(
           'flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold transition-all duration-200',
@@ -46,9 +76,18 @@ function FechadoCheckbox({ orcamento }: { orcamento: Orcamento }) {
         {orcamento.fechado ? <CheckSquare className="h-3.5 w-3.5" /> : <Square className="h-3.5 w-3.5" />}
         {orcamento.fechado ? 'Fechado' : 'Em aberto'}
       </button>
+      {showUndo && (
+        <button
+          onClick={handleUndo}
+          className="ml-1 text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
+        >
+          ↩ Desfazer
+        </button>
+      )}
     </div>
   )
 }
+
 
 function Highlight({ text, query }: { text: string | null | undefined; query: string }) {
   const safe = text ?? '—'
@@ -173,21 +212,59 @@ function exportPDF(data: Orcamento[], isFiltered: boolean) {
   doc.save(`orcamentos-${now.toISOString().slice(0, 10)}.pdf`)
 }
 
-type SortKey = 'created_at' | 'cliente' | 'responsavel' | 'valor_venda'
+type SortKey = 'created_at' | 'cliente' | 'responsavel' | 'valor_venda' | 'margem'
 
 interface Props {
   data: Orcamento[]
   toast: (type: 'success' | 'error', message: string) => void
   isFiltered?: boolean
   search?: string
+  onClearFilters?: () => void
+  responsaveis?: string[]
 }
 
-export default function OrcamentosTable({ data, toast, isFiltered, search = '' }: Props) {
+export default function OrcamentosTable({ data, toast, isFiltered, search = '', onClearFilters, responsaveis }: Props) {
   const [editing, setEditing] = useState<Orcamento | null>(null)
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'created_at', dir: 'desc' })
+  const [page, setPage] = useState(1)
+  // TAREFA E: rastrear quais rows tiveram flash
+  const [flashIds, setFlashIds] = useState<Set<string>>(new Set())
+  const prevFechadoMap = useRef<Map<string, boolean>>(new Map())
+
+  useEffect(() => { setPage(1) }, [data])
+  useEffect(() => { setPage(1) }, [sort])
+
+  // TAREFA E: detectar quando o.fechado muda para true
+  useEffect(() => {
+    const newFlash = new Set<string>()
+    data.forEach((o) => {
+      const prev = prevFechadoMap.current.get(o.id)
+      if (o.fechado && prev === false) {
+        newFlash.add(o.id)
+      }
+      prevFechadoMap.current.set(o.id, !!o.fechado)
+    })
+    if (newFlash.size > 0) {
+      setFlashIds((prev) => new Set([...prev, ...newFlash]))
+      setTimeout(() => {
+        setFlashIds((prev) => {
+          const next = new Set(prev)
+          newFlash.forEach((id) => next.delete(id))
+          return next
+        })
+      }, 700)
+    }
+  }, [data])
 
   function toggleSort(key: SortKey) {
     setSort((s) => s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' })
+  }
+
+  function calcMargem(o: Orcamento) {
+    const receita = (o.valor_venda ?? 0) + (o.instacao ?? 0)
+    return o.custo_total && o.custo_total > 0 && receita > 0
+      ? ((receita - o.custo_total) / receita) * 100
+      : null
   }
 
   const sorted = [...data].sort((a, b) => {
@@ -195,11 +272,15 @@ export default function OrcamentosTable({ data, toast, isFiltered, search = '' }
     if (sort.key === 'created_at') { av = a.created_at; bv = b.created_at }
     else if (sort.key === 'cliente') { av = a.cliente ?? ''; bv = b.cliente ?? '' }
     else if (sort.key === 'responsavel') { av = a.responsavel; bv = b.responsavel }
+    else if (sort.key === 'margem') { av = calcMargem(a) ?? -999; bv = calcMargem(b) ?? -999 }
     else { av = a.valor_venda ?? -1; bv = b.valor_venda ?? -1 }
     if (av < bv) return sort.dir === 'asc' ? -1 : 1
     if (av > bv) return sort.dir === 'asc' ? 1 : -1
     return 0
   })
+
+  const totalPages = Math.ceil(sorted.length / PAGE_SIZE)
+  const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   function SortIcon({ k }: { k: SortKey }) {
     if (sort.key !== k) return <ChevronsUpDown className="h-3 w-3 opacity-40" />
@@ -215,7 +296,8 @@ export default function OrcamentosTable({ data, toast, isFiltered, search = '' }
     { label: 'Tecido' },
     { label: 'Qtd' },
     { label: 'Valor', key: 'valor_venda' },
-    { label: 'Fechado' },
+    { label: 'Margem', key: 'margem' },
+    { label: 'Status' },
   ]
 
   return (
@@ -258,20 +340,29 @@ export default function OrcamentosTable({ data, toast, isFiltered, search = '' }
             <p className="mt-1 text-xs text-muted-foreground">
               {isFiltered ? 'Tente ajustar ou limpar os filtros' : 'Clique em "+ Novo Orçamento" para começar'}
             </p>
+            {isFiltered && onClearFilters && (
+              <button
+                onClick={onClearFilters}
+                className="mt-3 rounded-lg border px-4 py-2 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              >
+                Limpar todos os filtros
+              </button>
+            )}
           </div>
         ) : (
           <>
-            {/* Desktop */}
-            <div className="hidden md:block overflow-x-auto">
+            {/* Desktop — TAREFA C: overflow-auto max-h-[70vh] para scroll com header sticky */}
+            <div className="hidden md:block overflow-auto max-h-[70vh]">
               <table className="w-full text-sm">
+                {/* TAREFA C: thead sticky — sticky deve estar no <th>, não no <tr> */}
                 <thead>
-                  <tr className="border-b bg-muted/40">
+                  <tr className="border-b">
                     {COLS.map(({ label, key }) => (
                       <th
                         key={label}
                         onClick={() => key && toggleSort(key)}
                         className={cn(
-                          'px-4 py-3 text-left font-medium text-muted-foreground select-none',
+                          'sticky top-0 z-10 bg-card px-4 py-3 text-left font-medium text-muted-foreground select-none',
                           key && 'cursor-pointer hover:text-foreground transition-colors'
                         )}
                       >
@@ -284,76 +375,101 @@ export default function OrcamentosTable({ data, toast, isFiltered, search = '' }
                   </tr>
                 </thead>
                 <tbody>
-                  {sorted.map((o, i) => {
+                  {paginated.map((o, i) => {
                     const diasAberto = !o.fechado ? Math.floor((Date.now() - new Date(o.created_at).getTime()) / 86400000) : 0
+                    const receita = (o.valor_venda ?? 0) + (o.instacao ?? 0)
+                    const margem = calcMargem(o)
+                    const semCusto = receita > 0 && (!o.custo_total || o.custo_total === 0)
+                    const globalIndex = (page - 1) * PAGE_SIZE + i + 1
+                    // TAREFA E: flash ao fechar
+                    const hasFlash = flashIds.has(o.id)
                     return (
-                    <tr
-                      key={o.id}
-                      onClick={() => setEditing(o)}
-                      className={cn(
-                        'border-b last:border-0 hover:bg-muted/30 hover:translate-x-0.5 transition-all duration-150 cursor-pointer',
-                        o.fechado && 'row-fechado'
-                      )}
-                    >
-                      <td className="px-4 py-3 text-xs text-muted-foreground font-mono">#{i + 1}</td>
-                      <td className="px-4 py-3 text-muted-foreground text-xs">
-                        <span className="flex flex-col leading-tight gap-0.5">
-                          <span>{formatDate(o.created_at)}</span>
-                          {diasAberto > 0 && (
-                            <span className={cn('font-medium', diasAberto > 7 ? 'text-yellow-600 dark:text-yellow-400' : 'text-muted-foreground/60')}>
-                              {diasAberto}d aberto
-                            </span>
-                          )}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 font-medium">
-                        <span className="flex items-center gap-1.5">
-                          <span className="flex flex-col">
-                            <Highlight text={o.cliente} query={search} />
-                            {o.telefone && (
-                              <a
-                                href={`tel:${o.telefone}`}
-                                onClick={(e) => e.stopPropagation()}
-                                className="text-xs text-muted-foreground hover:text-primary transition-colors"
-                              >
-                                {o.telefone}
-                              </a>
+                      <tr
+                        key={o.id}
+                        onClick={() => setEditing(o)}
+                        className={cn(
+                          'border-b last:border-0 hover:bg-muted/30 hover:translate-x-0.5 transition-all duration-150 cursor-pointer',
+                          o.fechado && !hasFlash && 'row-fechado',
+                          hasFlash && 'animate-row-close'
+                        )}
+                      >
+                        <td className="px-4 py-3 text-xs text-muted-foreground font-mono">#{globalIndex}</td>
+                        <td className="px-4 py-3 text-muted-foreground text-xs">
+                          <span className="flex flex-col leading-tight gap-0.5">
+                            <span>{formatDate(o.created_at)}</span>
+                            {diasAberto > 0 && (
+                              <span className={cn('font-medium', diasAberto > 7 ? 'text-yellow-600 dark:text-yellow-400' : 'text-muted-foreground/60')}>
+                                {diasAberto}d aberto
+                              </span>
                             )}
                           </span>
-                          {o.observacoes && <span title={o.observacoes}><StickyNote className="h-3 w-3 shrink-0 text-muted-foreground" /></span>}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="flex items-center gap-2">
-                          <AvatarInitials name={o.responsavel} />
-                          <Highlight text={o.responsavel} query={search} />
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">{o.modelo}</td>
-                      <td className="px-4 py-3">{o.tecido}</td>
-                      <td className="px-4 py-3 text-center">{o.quantidade}</td>
-                      <td className="px-4 py-3">
-                        <span className="flex flex-col leading-tight">
-                          <span>{o.valor_venda ? formatCurrency(o.valor_venda) : '—'}</span>
-                          {o.instacao ? (
-                            <span className="text-xs text-primary/70">+{formatCurrency(o.instacao)} inst.</span>
-                          ) : null}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3"><FechadoCheckbox orcamento={o} /></td>
-                    </tr>
+                        </td>
+                        <td className="px-4 py-3 font-medium">
+                          <span className="flex items-center gap-1.5">
+                            <span className="flex flex-col">
+                              <Highlight text={o.cliente} query={search} />
+                              {o.telefone && (
+                                <a
+                                  href={`tel:${o.telefone}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="text-xs text-muted-foreground hover:text-primary transition-colors"
+                                >
+                                  {o.telefone}
+                                </a>
+                              )}
+                            </span>
+                            {o.observacoes && <span title={o.observacoes}><StickyNote className="h-3 w-3 shrink-0 text-muted-foreground" /></span>}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="flex items-center gap-2">
+                            <AvatarInitials name={o.responsavel} />
+                            <Highlight text={o.responsavel} query={search} />
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">{o.modelo}</td>
+                        <td className="px-4 py-3">{o.tecido}</td>
+                        <td className="px-4 py-3 text-center">{o.quantidade}</td>
+                        <td className="px-4 py-3">
+                          <span className="flex flex-col leading-tight">
+                            <span>{o.valor_venda ? formatCurrency(o.valor_venda) : '—'}</span>
+                            {o.instacao ? (
+                              <span className="text-xs text-primary/70">+{formatCurrency(o.instacao)} inst.</span>
+                            ) : null}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          {margem !== null ? (
+                            <span className={cn(
+                              'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold',
+                              margem >= 30 ? 'bg-green-500/10 text-green-600 dark:text-green-400'
+                                : margem >= 15 ? 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400'
+                                : 'bg-destructive/10 text-destructive'
+                            )}>
+                              {margem.toFixed(1)}%
+                            </span>
+                          ) : semCusto ? (
+                            <span className="text-xs text-muted-foreground/50 italic">sem custo</span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground/30">—</span>
+                          )}
+                        </td>
+                        {/* TAREFA B: passa toast para FechadoCheckbox */}
+                        <td className="px-4 py-3"><FechadoCheckbox orcamento={o} toast={toast} /></td>
+                      </tr>
                     )
                   })}
                 </tbody>
+                {/* TAREFA C: tfoot sticky no bottom — sticky deve estar no <td>, não no <tfoot> */}
                 <tfoot>
-                  <tr className="border-t bg-muted/40">
-                    <td colSpan={7} className="px-4 py-2.5 text-xs text-muted-foreground">
+                  <tr className="border-t">
+                    <td colSpan={7} className="sticky bottom-0 bg-card px-4 py-2.5 text-xs text-muted-foreground">
                       {sorted.length} orçamento{sorted.length !== 1 ? 's' : ''}
                     </td>
-                    <td className="px-4 py-2.5 text-sm font-bold text-primary">
+                    <td className="sticky bottom-0 bg-card px-4 py-2.5 text-sm font-bold text-primary">
                       {formatCurrency(sorted.reduce((s, o) => s + (o.valor_venda ?? 0) + (o.instacao ?? 0), 0))}
                     </td>
-                    <td />
+                    <td colSpan={2} className="sticky bottom-0 bg-card" />
                   </tr>
                 </tfoot>
               </table>
@@ -361,59 +477,91 @@ export default function OrcamentosTable({ data, toast, isFiltered, search = '' }
 
             {/* Mobile */}
             <div className="md:hidden divide-y">
-              {sorted.map((o, i) => {
+              {paginated.map((o, i) => {
                 const diasAberto = !o.fechado ? Math.floor((Date.now() - new Date(o.created_at).getTime()) / 86400000) : 0
+                const globalIndex = (page - 1) * PAGE_SIZE + i + 1
+                const hasFlash = flashIds.has(o.id)
                 return (
-                <div
-                  key={o.id}
-                  onClick={() => setEditing(o)}
-                  className={cn(
-                    'px-4 py-4 cursor-pointer hover:bg-muted/20 transition-colors',
-                    o.fechado && 'row-fechado'
-                  )}
-                >
-                  <div className="flex items-center justify-between mb-1.5">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <AvatarInitials name={o.responsavel} />
-                        <span className="text-xs font-mono text-muted-foreground">#{i + 1}</span>
-                        <p className="font-semibold text-sm truncate">
-                          <Highlight text={o.cliente ?? 'Sem cliente'} query={search} />
+                  <div
+                    key={o.id}
+                    onClick={() => setEditing(o)}
+                    className={cn(
+                      'px-4 py-4 cursor-pointer hover:bg-muted/20 transition-colors',
+                      o.fechado && !hasFlash && 'row-fechado',
+                      hasFlash && 'animate-row-close'
+                    )}
+                  >
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <AvatarInitials name={o.responsavel} />
+                          <span className="text-xs font-mono text-muted-foreground">#{globalIndex}</span>
+                          <p className="font-semibold text-sm truncate">
+                            <Highlight text={o.cliente ?? 'Sem cliente'} query={search} />
+                          </p>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5 pl-8">
+                          <Highlight text={o.responsavel} query={search} /> · {formatDate(o.created_at)}
+                          {diasAberto > 0 && (
+                            <span className={cn('ml-1.5 font-medium', diasAberto > 7 ? 'text-yellow-600 dark:text-yellow-400' : '')}>
+                              · {diasAberto}d aberto
+                            </span>
+                          )}
                         </p>
                       </div>
-                      <p className="text-xs text-muted-foreground mt-0.5 pl-8">
-                        <Highlight text={o.responsavel} query={search} /> · {formatDate(o.created_at)}
-                        {diasAberto > 0 && (
-                          <span className={cn('ml-1.5 font-medium', diasAberto > 7 ? 'text-yellow-600 dark:text-yellow-400' : '')}>
-                            · {diasAberto}d aberto
-                          </span>
-                        )}
-                      </p>
+                      <div className="ml-2 shrink-0">
+                        {/* TAREFA B: passa toast */}
+                        <FechadoCheckbox orcamento={o} toast={toast} />
+                      </div>
                     </div>
-                    <div className="ml-2 shrink-0">
-                      <FechadoCheckbox orcamento={o} />
+                    <div className="flex items-center justify-between pl-8">
+                      <span className="text-xs text-muted-foreground">{o.modelo} · {o.tecido}</span>
+                      {o.valor_venda
+                        ? <span className="text-sm font-bold text-primary">{formatCurrency(o.valor_venda)}</span>
+                        : <span className="text-xs text-muted-foreground">Sem valor</span>
+                      }
                     </div>
                   </div>
-                  <div className="flex items-center justify-between pl-8">
-                    <span className="text-xs text-muted-foreground">{o.modelo} · {o.tecido}</span>
-                    {o.valor_venda
-                      ? <span className="text-sm font-bold text-primary">{formatCurrency(o.valor_venda)}</span>
-                      : <span className="text-xs text-muted-foreground">Sem valor</span>
-                    }
-                  </div>
-                </div>
                 )
               })}
             </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between border-t px-5 py-3">
+                <span className="text-xs text-muted-foreground">
+                  {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, sorted.length)} de {sorted.length}
+                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setPage((p) => p - 1)}
+                    disabled={page === 1}
+                    className="rounded-lg border p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                  </button>
+                  <span className="px-2 text-xs font-medium tabular-nums">{page} / {totalPages}</span>
+                  <button
+                    onClick={() => setPage((p) => p + 1)}
+                    disabled={page === totalPages}
+                    className="rounded-lg border p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>
 
+      {/* TAREFA F: passa responsaveis para EditOrcamentoForm */}
       {editing && (
         <EditOrcamentoForm
           orcamento={editing}
           onClose={() => setEditing(null)}
           toast={toast}
+          responsaveis={responsaveis}
         />
       )}
     </>

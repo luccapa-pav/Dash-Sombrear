@@ -1,7 +1,7 @@
 import { X } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useAddOrcamento } from '@/hooks/useOrcamentos'
-import { cn } from '@/lib/utils'
+import { cn, formatCurrency } from '@/lib/utils'
 
 const MODELOS = ['Rolo', 'Romeu e Julieta', 'Vertical', 'Horizontal', 'Painel', 'Cortina']
 const inputClass = 'w-full rounded-lg border bg-background px-3.5 py-3 text-sm outline-none ring-ring focus:ring-2'
@@ -11,9 +11,20 @@ interface Props {
   toast: (type: 'success' | 'error', message: string) => void
   open: boolean
   onClose: () => void
+  responsaveis?: string[]
 }
 
-export default function NovoOrcamentoForm({ toast, open, onClose }: Props) {
+function SectionDivider({ label }: { label: string }) {
+  return (
+    <div className="col-span-2 flex items-center gap-2 pt-2">
+      <div className="flex-1 border-t" />
+      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</span>
+      <div className="flex-1 border-t" />
+    </div>
+  )
+}
+
+export default function NovoOrcamentoForm({ toast, open, onClose, responsaveis }: Props) {
   const { mutateAsync, isPending } = useAddOrcamento()
 
   useEffect(() => {
@@ -23,19 +34,50 @@ export default function NovoOrcamentoForm({ toast, open, onClose }: Props) {
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
   }, [onClose])
+
   const [form, setForm] = useState({
     responsavel: '', cliente: '', telefone: '', largura: '', altura: '',
     modelo: MODELOS[0], tecido: '', quantidade: '1',
-    cor_ferragem_motor: '', acabamentos: '', valor_venda: '', instacao: '', observacoes: '',
+    cor_ferragem_motor: '', acabamentos: '', valor_venda: '', instacao: '',
+    custo_m2: '', custo_total: '', custo_acabamento: '', observacoes: '',
   })
 
   function set(key: string, value: string) {
     setForm((f) => ({ ...f, [key]: value }))
   }
 
+  const calcCusto = (() => {
+    const l = parseFloat(form.largura)
+    const h = parseFloat(form.altura)
+    const cm2 = parseFloat(form.custo_m2)
+    const qtd = parseInt(form.quantidade) || 1
+    const acab = parseFloat(form.custo_acabamento) || 0
+    if (l > 0 && h > 0 && cm2 > 0) return l * h * cm2 * qtd + acab
+    return null
+  })()
+
+  // TAREFA A: auto-preenche custo_total quando as dimensões e custo_m2 são válidos
+  useEffect(() => {
+    const l = parseFloat(form.largura)
+    const h = parseFloat(form.altura)
+    const cm2 = parseFloat(form.custo_m2)
+    const qtd = parseInt(form.quantidade) || 1
+    const acab = parseFloat(form.custo_acabamento) || 0
+    if (l > 0 && h > 0 && cm2 > 0) {
+      setForm(f => ({ ...f, custo_total: (l * h * cm2 * qtd + acab).toFixed(2) }))
+    }
+  }, [form.largura, form.altura, form.custo_m2, form.quantidade, form.custo_acabamento])
+
+  const isAutocalc = calcCusto !== null && form.custo_total === calcCusto.toFixed(2)
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     try {
+      // TAREFA A: calcular margem no payload
+      const receita = (form.valor_venda ? Number(form.valor_venda) : 0) + (form.instacao ? Number(form.instacao) : 0)
+      const custoTotal = form.custo_total ? Number(form.custo_total) : null
+      const margem = receita > 0 && custoTotal ? ((receita - custoTotal) / receita) * 100 : null
+
       await mutateAsync({
         responsavel: form.responsavel,
         cliente: form.cliente || null,
@@ -49,12 +91,21 @@ export default function NovoOrcamentoForm({ toast, open, onClose }: Props) {
         acabamentos: form.acabamentos || null,
         valor_venda: form.valor_venda ? Number(form.valor_venda) : null,
         instacao: form.instacao ? Number(form.instacao) : null,
+        custo_m2: form.custo_m2 ? Number(form.custo_m2) : null,
+        custo_total: form.custo_total ? Number(form.custo_total) : null,
+        custo_acabamento: form.custo_acabamento ? Number(form.custo_acabamento) : null,
         fechado: false,
         observacoes: form.observacoes || null,
+        margem,
       })
       toast('success', 'Orçamento salvo com sucesso!')
       onClose()
-      setForm({ responsavel: '', cliente: '', telefone: '', largura: '', altura: '', modelo: MODELOS[0], tecido: '', quantidade: '1', cor_ferragem_motor: '', acabamentos: '', valor_venda: '', instacao: '', observacoes: '' })
+      setForm({
+        responsavel: '', cliente: '', telefone: '', largura: '', altura: '',
+        modelo: MODELOS[0], tecido: '', quantidade: '1',
+        cor_ferragem_motor: '', acabamentos: '', valor_venda: '', instacao: '',
+        custo_m2: '', custo_total: '', custo_acabamento: '', observacoes: '',
+      })
     } catch {
       toast('error', 'Erro ao salvar orçamento.')
     }
@@ -74,9 +125,23 @@ export default function NovoOrcamentoForm({ toast, open, onClose }: Props) {
 
         <form onSubmit={handleSubmit} className="overflow-y-auto flex-1 p-5">
           <div className="grid grid-cols-2 gap-4">
+
+            <SectionDivider label="Cliente" />
+
             <div className="col-span-2 sm:col-span-1">
               <label className={labelClass}>Responsável *</label>
-              <input required value={form.responsavel} onChange={(e) => set('responsavel', e.target.value)} className={inputClass} placeholder="Nome do responsável" />
+              {/* TAREFA F: datalist para autocomplete */}
+              <input
+                required
+                value={form.responsavel}
+                onChange={(e) => set('responsavel', e.target.value)}
+                className={inputClass}
+                placeholder="Nome do responsável"
+                list="responsaveis-list-novo"
+              />
+              <datalist id="responsaveis-list-novo">
+                {(responsaveis ?? []).map((r) => <option key={r} value={r} />)}
+              </datalist>
             </div>
             <div className="col-span-2 sm:col-span-1">
               <label className={labelClass}>Cliente</label>
@@ -86,6 +151,9 @@ export default function NovoOrcamentoForm({ toast, open, onClose }: Props) {
               <label className={labelClass}>Telefone</label>
               <input type="tel" value={form.telefone} onChange={(e) => set('telefone', e.target.value)} className={inputClass} placeholder="(00) 00000-0000" />
             </div>
+
+            <SectionDivider label="Produto" />
+
             <div>
               <label className={labelClass}>Largura (m)</label>
               <input type="number" step="0.01" value={form.largura} onChange={(e) => set('largura', e.target.value)} className={inputClass} placeholder="0.00" />
@@ -116,6 +184,9 @@ export default function NovoOrcamentoForm({ toast, open, onClose }: Props) {
               <label className={labelClass}>Acabamentos</label>
               <input value={form.acabamentos} onChange={(e) => set('acabamentos', e.target.value)} className={inputClass} placeholder="Opcional" />
             </div>
+
+            <SectionDivider label="Financeiro" />
+
             <div>
               <label className={labelClass}>Valor de Venda (R$)</label>
               <input type="number" step="0.01" value={form.valor_venda} onChange={(e) => set('valor_venda', e.target.value)} className={inputClass} placeholder="0.00" />
@@ -124,6 +195,49 @@ export default function NovoOrcamentoForm({ toast, open, onClose }: Props) {
               <label className={labelClass}>Valor Instalação (R$)</label>
               <input type="number" step="0.01" value={form.instacao} onChange={(e) => set('instacao', e.target.value)} className={inputClass} placeholder="0.00" />
             </div>
+            <div>
+              <label className={labelClass}>
+                Custo por m² (R$)
+                <span className="ml-1.5 text-xs font-normal text-muted-foreground">do tecido</span>
+              </label>
+              <input type="number" step="0.01" value={form.custo_m2} onChange={(e) => set('custo_m2', e.target.value)} className={inputClass} placeholder="0.00" />
+            </div>
+            <div>
+              <label className={labelClass}>Custo Acabamento (R$)</label>
+              <input type="number" step="0.01" value={form.custo_acabamento} onChange={(e) => set('custo_acabamento', e.target.value)} className={inputClass} placeholder="0.00" />
+            </div>
+            <div className="col-span-2">
+              {/* TAREFA A: badge "calculado automaticamente" */}
+              <label className={labelClass}>
+                Custo Total (R$)
+                <span className="ml-1.5 text-xs font-normal text-muted-foreground">para calcular margem</span>
+                {isAutocalc && (
+                  <span className="ml-2 rounded-full bg-green-500/10 px-2 py-0.5 text-[10px] font-semibold text-green-600 dark:text-green-400">
+                    calculado automaticamente
+                  </span>
+                )}
+              </label>
+              <input type="number" step="0.01" value={form.custo_total} onChange={(e) => set('custo_total', e.target.value)} className={inputClass} placeholder="0.00" />
+              {calcCusto !== null && (
+                <p className="mt-1.5 flex items-center gap-2 text-xs">
+                  <span className="text-muted-foreground">
+                    = {formatCurrency(calcCusto)}
+                    <span className="ml-1 text-muted-foreground/60">
+                      ({form.largura}×{form.altura}m × R${form.custo_m2}/m² × {form.quantidade}un
+                      {parseFloat(form.custo_acabamento) > 0 ? ` + R$${form.custo_acabamento} acab.` : ''})
+                    </span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => set('custo_total', calcCusto.toFixed(2))}
+                    className="shrink-0 rounded bg-primary/10 px-2 py-0.5 text-primary font-medium hover:bg-primary/20 transition-colors"
+                  >
+                    Usar
+                  </button>
+                </p>
+              )}
+            </div>
+
             <div className="col-span-2">
               <label className={labelClass}>Observações</label>
               <textarea

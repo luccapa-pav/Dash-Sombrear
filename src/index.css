@@ -80,6 +80,12 @@
     100% { background-color: rgb(34 197 94 / 0.03); box-shadow: inset 3px 0 0 rgb(34 197 94 / 0.35); }
   }
 
+  /* TAREFA E: animação flash verde ao fechar um orçamento */
+  @keyframes rowClose {
+    0%   { background-color: rgb(34 197 94 / 0.25); }
+    100% { background-color: transparent; }
+  }
+
   @keyframes fab-pulse {
     0%   { box-shadow: 0 4px 24px -4px rgba(232,112,26,0.35), 0 0 0 0 rgba(232,112,26,0.4); }
     60%  { box-shadow: 0 4px 24px -4px rgba(232,112,26,0.35), 0 0 0 14px rgba(232,112,26,0); }
@@ -97,7 +103,12 @@
   }
 
   .row-fechado {
-    animation: row-close-flash 0.7s ease-out forwards;
+    background-color: rgb(34 197 94 / 0.04);
+    box-shadow: inset 3px 0 0 rgb(34 197 94 / 0.35);
+  }
+
+  .animate-row-close {
+    animation: rowClose 0.7s ease-out;
   }
 
   /* Disable transitions during theme toggle */

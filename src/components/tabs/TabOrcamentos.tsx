@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Plus } from 'lucide-react'
 import type { Orcamento } from '@/lib/supabase'
+import { useDebounce } from '@/hooks/useDebounce'
 import KPIGrid from '@/components/orcamentos/KPIGrid'
 import OrcamentosFechadosCard from '@/components/orcamentos/OrcamentosFechadosCard'
 import OrcamentosTable from '@/components/orcamentos/OrcamentosTable'
@@ -36,23 +37,46 @@ export default function TabOrcamentos({ data, loading, toast }: Props) {
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
 
+  const debouncedSearch = useDebounce(search, 220)
+
+  function clearFilters() {
+    setSearch('')
+    setResponsavel('todos')
+    setModelo('todos')
+    setFechadoFilter('todos')
+    setPeriodo('todos')
+    setDateFrom('')
+    setDateTo('')
+  }
+
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
-      if (e.key !== 'n' && e.key !== 'N') return
       const active = document.activeElement
-      if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT')) return
-      setFormOpen(true)
+      const inField = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT')
+      // Atalho "n" para novo orçamento
+      if ((e.key === 'n' || e.key === 'N') && !inField) {
+        setFormOpen(true)
+        return
+      }
+      // TAREFA D: atalho "/" para focar busca
+      if (e.key === '/' && !inField) {
+        e.preventDefault()
+        document.getElementById('filter-search-input')?.focus()
+      }
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
   }, [])
 
   const filtered = data.filter((o) => {
-    const matchSearch = !search || [o.cliente, o.responsavel, o.modelo, o.tecido, o.telefone]
-      .some((v) => v?.toLowerCase().includes(search.toLowerCase()))
+    const matchSearch = !debouncedSearch || [o.cliente, o.responsavel, o.modelo, o.tecido, o.telefone]
+      .some((v) => v?.toLowerCase().includes(debouncedSearch.toLowerCase()))
     const matchResp = responsavel === 'todos' || o.responsavel === responsavel
     const matchModelo = modelo === 'todos' || o.modelo === modelo
-    const matchStatus = fechadoFilter === 'todos' || (fechadoFilter === 'fechado' ? o.fechado === true : o.fechado !== true)
+    const matchStatus = fechadoFilter === 'todos'
+      || (fechadoFilter === 'fechado' ? o.fechado === true : false)
+      || (fechadoFilter === 'aberto' ? o.fechado !== true : false)
+      || (fechadoFilter === 'sem-custo' ? o.fechado === true && (!o.custo_total || o.custo_total === 0) : false)
 
     let matchPeriodo = true
     if (periodo !== 'todos' && o.created_at) {
@@ -84,8 +108,9 @@ export default function TabOrcamentos({ data, loading, toast }: Props) {
   if (loading) {
     return (
       <div className="space-y-5">
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard />
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
+          <SkeletonCard /><SkeletonCard /><SkeletonCard />
+          <SkeletonCard /><SkeletonCard /><SkeletonCard />
         </div>
         <div className="rounded-xl border bg-card shadow-sm animate-pulse">
           <div className="border-b px-5 py-4"><div className="h-5 w-48 rounded bg-muted" /></div>
@@ -123,6 +148,7 @@ export default function TabOrcamentos({ data, loading, toast }: Props) {
           dateTo={dateTo} onDateToChange={setDateTo}
           responsaveis={responsaveis}
           modelos={modelos}
+          onClearFilters={clearFilters}
         />
 
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
@@ -132,7 +158,15 @@ export default function TabOrcamentos({ data, loading, toast }: Props) {
         </div>
 
         <OrcamentosFechadosCard data={filtered} />
-        <OrcamentosTable data={filtered} toast={toast} isFiltered={isFiltered} search={search} />
+        {/* TAREFA F: passa responsaveis */}
+        <OrcamentosTable
+          data={filtered}
+          toast={toast}
+          isFiltered={isFiltered}
+          search={debouncedSearch}
+          onClearFilters={clearFilters}
+          responsaveis={responsaveis}
+        />
       </div>
 
       {/* Mobile FAB */}
@@ -144,7 +178,8 @@ export default function TabOrcamentos({ data, loading, toast }: Props) {
         <Plus className="h-6 w-6" />
       </button>
 
-      <NovoOrcamentoForm toast={toast} open={formOpen} onClose={() => setFormOpen(false)} />
+      {/* TAREFA F: passa responsaveis */}
+      <NovoOrcamentoForm toast={toast} open={formOpen} onClose={() => setFormOpen(false)} responsaveis={responsaveis} />
     </>
   )
 }

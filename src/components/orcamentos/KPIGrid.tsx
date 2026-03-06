@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { Orcamento } from '@/lib/supabase'
 import { formatCurrency } from '@/lib/utils'
-import { CheckCircle2, DollarSign, FileText, ReceiptText, TrendingUp, Pencil, Check } from 'lucide-react'
+import { CheckCircle2, DollarSign, FileText, ReceiptText, TrendingUp, Pencil, Check, Clock } from 'lucide-react'
 import { useMonthlyComparison } from '@/hooks/useOrcamentos'
 import { useCountUp } from '@/hooks/useCountUp'
 
@@ -11,7 +11,7 @@ interface Props { data: Orcamento[] }
 
 function KpiTooltip({ lines }: { lines: string[] }) {
   return (
-    <div className="pointer-events-none absolute bottom-[calc(100%+6px)] left-1/2 -translate-x-1/2 z-50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 hidden md:block">
+    <div className="pointer-events-none absolute bottom-[calc(100%+6px)] left-1/2 -translate-x-1/2 z-50 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-200">
       <div className="rounded-lg border bg-card px-3 py-2 shadow-elevated text-xs text-muted-foreground whitespace-nowrap space-y-0.5">
         {lines.map((l, i) => <p key={i}>{l}</p>)}
       </div>
@@ -22,18 +22,20 @@ function KpiTooltip({ lines }: { lines: string[] }) {
 
 export default function KPIGrid({ data }: Props) {
   const fechados = data.filter((o) => o.fechado === true)
+  const emAberto = data.filter((o) => !o.fechado)
   const totalVenda = fechados.reduce((s, o) => s + (o.valor_venda ?? 0), 0)
   const totalInst = fechados.reduce((s, o) => s + (o.instacao ?? 0), 0)
   const faturamento = totalVenda + totalInst
   const totalOrc = data.length
   const ticketMedio = fechados.length > 0 ? faturamento / fechados.length : 0
   const convRate = totalOrc > 0 ? (fechados.length / totalOrc) * 100 : 0
+  const valorEmAberto = emAberto.reduce((s, o) => s + (o.valor_venda ?? 0) + (o.instacao ?? 0), 0)
 
-  const comMargem = fechados.filter((o) => o.custo != null && o.custo > 0)
+  const comMargem = fechados.filter((o) => o.custo_total != null && o.custo_total > 0)
   const margemMedia = comMargem.length > 0
     ? comMargem.reduce((s, o) => {
         const receita = (o.valor_venda ?? 0) + (o.instacao ?? 0)
-        return s + (receita > 0 ? ((receita - (o.custo ?? 0)) / receita) * 100 : 0)
+        return s + (receita > 0 ? ((receita - (o.custo_total ?? 0)) / receita) * 100 : 0)
       }, 0) / comMargem.length
     : 0
 
@@ -43,6 +45,7 @@ export default function KPIGrid({ data }: Props) {
   const animTicket = useCountUp(ticketMedio, 900)
   const animConv = useCountUp(convRate, 800)
   const animMargem = useCountUp(margemMedia, 850)
+  const animEmAberto = useCountUp(valorEmAberto, 900)
 
   const [meta, setMeta] = useState(() => {
     const saved = localStorage.getItem(META_KEY)
@@ -103,13 +106,25 @@ export default function KPIGrid({ data }: Props) {
         ? [`Baseado em ${comMargem.length} fechamento${comMargem.length !== 1 ? 's' : ''} com custo`, `(venda + instalação − custo) / receita`]
         : ['Informe o custo dos orçamentos', 'para calcular a margem'],
     },
+    {
+      label: 'Em aberto',
+      value: valorEmAberto > 0 ? formatCurrency(animEmAberto) : '—',
+      icon: Clock,
+      highlight: false,
+      sub: `${emAberto.length} orçamento${emAberto.length !== 1 ? 's' : ''}`,
+      tooltip: [
+        `${emAberto.length} orçamento${emAberto.length !== 1 ? 's' : ''} pendente${emAberto.length !== 1 ? 's' : ''}`,
+        valorEmAberto > 0 ? `Pipeline: ${formatCurrency(valorEmAberto)}` : 'Sem valor informado',
+      ],
+    },
   ]
 
   return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
       {/* Faturamento — shimmer + tooltip + meta */}
       <div
-        className="group relative animate-in fade-in-0 slide-in-from-bottom-4 duration-500 rounded-xl border border-primary/30 bg-primary/5 dark:bg-primary/10 p-4 shadow-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-elevated cursor-default"
+        tabIndex={0}
+        className="group relative animate-in fade-in-0 slide-in-from-bottom-4 duration-500 rounded-xl border border-primary/30 bg-primary/5 dark:bg-primary/10 p-4 shadow-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-elevated cursor-default outline-none"
         style={{ animationFillMode: 'both', animationDelay: '0ms' }}
       >
         <KpiTooltip lines={[
@@ -191,7 +206,8 @@ export default function KPIGrid({ data }: Props) {
       {kpis.map(({ label, value, icon: Icon, highlight, sub, tooltip }, i) => (
         <div
           key={label}
-          className={`group relative animate-in fade-in-0 slide-in-from-bottom-4 duration-500 rounded-xl border p-4 shadow-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-elevated cursor-default ${highlight ? 'border-primary/30 bg-primary/5 dark:bg-primary/10' : 'bg-card'}`}
+          tabIndex={0}
+          className={`group relative animate-in fade-in-0 slide-in-from-bottom-4 duration-500 rounded-xl border p-4 shadow-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-elevated cursor-default outline-none ${highlight ? 'border-primary/30 bg-primary/5 dark:bg-primary/10' : 'bg-card'}`}
           style={{ animationFillMode: 'both', animationDelay: `${(i + 1) * 80}ms` }}
         >
           <KpiTooltip lines={tooltip} />
