@@ -380,6 +380,7 @@ export default function OrcamentosTable({ data, toast, isFiltered, search = '', 
                     const receita = (o.valor_venda ?? 0) + (o.instacao ?? 0)
                     const margem = calcMargem(o)
                     const semCusto = receita > 0 && (!o.custo_total || o.custo_total === 0)
+                    const temCustoSemReceita = (!o.valor_venda) && o.custo_total && o.custo_total > 0
                     const globalIndex = (page - 1) * PAGE_SIZE + i + 1
                     // TAREFA E: flash ao fechar
                     const hasFlash = flashIds.has(o.id)
@@ -450,6 +451,10 @@ export default function OrcamentosTable({ data, toast, isFiltered, search = '', 
                             </span>
                           ) : semCusto ? (
                             <span className="text-xs text-muted-foreground/50 italic">sem custo</span>
+                          ) : temCustoSemReceita ? (
+                            <span className="text-xs text-muted-foreground/60 italic" title="Informe o valor de venda para calcular a margem">
+                              custo {formatCurrency(o.custo_total!)}
+                            </span>
                           ) : (
                             <span className="text-xs text-muted-foreground/30">—</span>
                           )}

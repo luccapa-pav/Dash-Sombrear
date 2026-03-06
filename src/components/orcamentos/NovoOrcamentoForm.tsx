@@ -70,6 +70,13 @@ export default function NovoOrcamentoForm({ toast, open, onClose, responsaveis }
 
   const isAutocalc = calcCusto !== null && form.custo_total === calcCusto.toFixed(2)
 
+  const previewMargem = (() => {
+    const receita = (parseFloat(form.valor_venda) || 0) + (parseFloat(form.instacao) || 0)
+    const custo = parseFloat(form.custo_total) || 0
+    if (receita > 0 && custo > 0) return ((receita - custo) / receita) * 100
+    return null
+  })()
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     try {
@@ -237,6 +244,17 @@ export default function NovoOrcamentoForm({ toast, open, onClose, responsaveis }
                 </p>
               )}
             </div>
+
+            {previewMargem !== null && (
+              <div className="col-span-2 rounded-lg bg-green-500/10 px-3 py-2.5 flex items-center justify-between">
+                <span className="text-sm font-semibold text-green-700 dark:text-green-400">
+                  Margem estimada: {previewMargem.toFixed(1)}%
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {formatCurrency((parseFloat(form.valor_venda) || 0) + (parseFloat(form.instacao) || 0))} − {formatCurrency(parseFloat(form.custo_total) || 0)}
+                </span>
+              </div>
+            )}
 
             <div className="col-span-2">
               <label className={labelClass}>Observações</label>
