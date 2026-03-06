@@ -31,15 +31,9 @@ export default function KPIGrid({ data }: Props) {
   const convRate = totalOrc > 0 ? (fechados.length / totalOrc) * 100 : 0
   const valorEmAberto = emAberto.reduce((s, o) => s + (o.valor_venda ?? 0) + (o.instacao ?? 0), 0)
 
-  const comMargem = data.filter((o) => {
-    const receita = (o.valor_venda ?? 0) + (o.instacao ?? 0)
-    return o.custo_total != null && o.custo_total > 0 && receita > 0
-  })
+  const comMargem = data.filter((o) => o.margem != null)
   const margemMedia = comMargem.length > 0
-    ? comMargem.reduce((s, o) => {
-        const receita = (o.valor_venda ?? 0) + (o.instacao ?? 0)
-        return s + ((receita - (o.custo_total ?? 0)) / receita) * 100
-      }, 0) / comMargem.length
+    ? comMargem.reduce((s, o) => s + (o.margem ?? 0), 0) / comMargem.length
     : 0
 
   const animFaturamento = useCountUp(faturamento, 950)
@@ -106,8 +100,8 @@ export default function KPIGrid({ data }: Props) {
       highlight: false,
       sub: comMargem.length > 0 ? `${comMargem.length} com custo` : 'sem custo informado',
       tooltip: comMargem.length > 0
-        ? [`Baseado em ${comMargem.length} orçamento${comMargem.length !== 1 ? 's' : ''} com custo`, `(venda + instalação − custo) / receita`]
-        : ['Informe o custo e valor de venda', 'para calcular a margem'],
+        ? [`Baseado em ${comMargem.length} orçamento${comMargem.length !== 1 ? 's' : ''} com margem calculada`, `(venda + instalação − custo) / receita`]
+        : ['Margem calculada automaticamente', 'pelo n8n ao registrar o orçamento'],
     },
     {
       label: 'Em aberto',

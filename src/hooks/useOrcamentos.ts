@@ -108,9 +108,12 @@ export function useUpdateOrcamento() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, ...payload }: Partial<Orcamento> & { id: string }) => {
-      const { data, error } = await supabase.from('orcamentos').update(payload).eq('id', id).select().single()
-      if (error) throw error
-      return data
+      const { error } = await supabase.from('orcamentos').update(payload).eq('id', id)
+      if (error) {
+        console.error('[useUpdateOrcamento] Supabase error:', error)
+        throw error
+      }
+      return { id, ...payload } as Orcamento
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['orcamentos'] }),
   })

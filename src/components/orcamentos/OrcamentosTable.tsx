@@ -262,8 +262,8 @@ export default function OrcamentosTable({ data, toast, isFiltered, search = '', 
 
   function calcMargem(o: Orcamento) {
     const receita = (o.valor_venda ?? 0) + (o.instacao ?? 0)
-    return o.custo_total && o.custo_total > 0 && receita > 0
-      ? ((receita - o.custo_total) / receita) * 100
+    return o.custo_tecido && o.custo_tecido > 0 && receita > 0
+      ? ((receita - o.custo_tecido) / receita) * 100
       : null
   }
 
@@ -379,8 +379,8 @@ export default function OrcamentosTable({ data, toast, isFiltered, search = '', 
                     const diasAberto = !o.fechado ? Math.floor((Date.now() - new Date(o.created_at).getTime()) / 86400000) : 0
                     const receita = (o.valor_venda ?? 0) + (o.instacao ?? 0)
                     const margem = calcMargem(o)
-                    const semCusto = receita > 0 && (!o.custo_total || o.custo_total === 0)
-                    const temCustoSemReceita = (!o.valor_venda) && o.custo_total && o.custo_total > 0
+                    const semCusto = receita > 0 && (!o.custo_tecido || o.custo_tecido === 0)
+                    const temCustoSemReceita = (!o.valor_venda) && o.custo_tecido && o.custo_tecido > 0
                     const globalIndex = (page - 1) * PAGE_SIZE + i + 1
                     // TAREFA E: flash ao fechar
                     const hasFlash = flashIds.has(o.id)
@@ -453,7 +453,7 @@ export default function OrcamentosTable({ data, toast, isFiltered, search = '', 
                             <span className="text-xs text-muted-foreground/50 italic">sem custo</span>
                           ) : temCustoSemReceita ? (
                             <span className="text-xs text-muted-foreground/60 italic" title="Informe o valor de venda para calcular a margem">
-                              custo {formatCurrency(o.custo_total!)}
+                              custo {formatCurrency(o.custo_tecido!)}
                             </span>
                           ) : (
                             <span className="text-xs text-muted-foreground/30">—</span>

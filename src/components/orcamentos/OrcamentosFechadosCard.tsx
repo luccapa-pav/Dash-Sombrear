@@ -36,8 +36,8 @@ export default function OrcamentosFechadosCard({ data }: Props) {
           <div className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2 xl:grid-cols-3">
             {fechados.map((o) => {
               const receita = (o.valor_venda ?? 0) + (o.instacao ?? 0)
-              const margem = o.margem ?? (receita > 0 && o.custo_total
-                ? ((receita - o.custo_total) / receita) * 100
+              const margem = o.margem ?? (receita > 0 && o.custo_tecido
+                ? ((receita - o.custo_tecido) / receita) * 100
                 : null)
               return (
                 <div
@@ -64,10 +64,10 @@ export default function OrcamentosFechadosCard({ data }: Props) {
                       <span className="text-muted-foreground">Tecido</span>
                       <span className="font-medium">{o.tecido}</span>
                     </div>
-                    {o.custo_total && (
+                    {o.custo_tecido && (
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Custo Total</span>
-                        <span className="font-medium">{formatCurrency(o.custo_total)}</span>
+                        <span className="font-medium">{formatCurrency(o.custo_tecido)}</span>
                       </div>
                     )}
                     {o.custo_acabamento && (

@@ -60,7 +60,7 @@ export default function EditOrcamentoForm({ orcamento, onClose, toast, responsav
     valor_venda: orcamento.valor_venda?.toString() ?? '',
     instacao: orcamento.instacao?.toString() ?? '',
     custo_m2: orcamento.custo_m2?.toString() ?? '',
-    custo_total: orcamento.custo_total?.toString() ?? '',
+    custo_tecido: orcamento.custo_tecido?.toString() ?? '',
     custo_acabamento: orcamento.custo_acabamento?.toString() ?? '',
     fechado: orcamento.fechado ?? false,
     observacoes: orcamento.observacoes ?? '',
@@ -80,7 +80,7 @@ export default function EditOrcamentoForm({ orcamento, onClose, toast, responsav
     return null
   })()
 
-  // TAREFA A: auto-preenche custo_total quando as dimensões e custo_m2 são válidos
+  // TAREFA A: auto-preenche custo_tecido quando as dimensões e custo_m2 são válidos
   useEffect(() => {
     const l = parseFloat(form.largura)
     const h = parseFloat(form.altura)
@@ -88,15 +88,15 @@ export default function EditOrcamentoForm({ orcamento, onClose, toast, responsav
     const qtd = parseInt(form.quantidade) || 1
     const acab = parseFloat(form.custo_acabamento) || 0
     if (l > 0 && h > 0 && cm2 > 0) {
-      setForm(f => ({ ...f, custo_total: (l * h * cm2 * qtd + acab).toFixed(2) }))
+      setForm(f => ({ ...f, custo_tecido: (l * h * cm2 * qtd + acab).toFixed(2) }))
     }
   }, [form.largura, form.altura, form.custo_m2, form.quantidade, form.custo_acabamento])
 
-  const isAutocalc = calcCusto !== null && form.custo_total === calcCusto.toFixed(2)
+  const isAutocalc = calcCusto !== null && form.custo_tecido === calcCusto.toFixed(2)
 
   const previewMargem = (() => {
     const receita = (parseFloat(form.valor_venda) || 0) + (parseFloat(form.instacao) || 0)
-    const custo = parseFloat(form.custo_total) || 0
+    const custo = parseFloat(form.custo_tecido) || 0
     if (receita > 0 && custo > 0) return ((receita - custo) / receita) * 100
     return null
   })()
@@ -129,7 +129,7 @@ export default function EditOrcamentoForm({ orcamento, onClose, toast, responsav
     try {
       // TAREFA A: calcular margem no payload
       const receita = (form.valor_venda ? Number(form.valor_venda) : 0) + (form.instacao ? Number(form.instacao) : 0)
-      const custoTotal = form.custo_total ? Number(form.custo_total) : (calcCusto ?? null)
+      const custoTotal = form.custo_tecido ? Number(form.custo_tecido) : (calcCusto ?? null)
       const margem = receita > 0 && custoTotal ? ((receita - custoTotal) / receita) * 100 : null
 
       const updated = await update({
@@ -147,7 +147,7 @@ export default function EditOrcamentoForm({ orcamento, onClose, toast, responsav
         valor_venda: form.valor_venda ? Number(form.valor_venda) : null,
         instacao: form.instacao ? Number(form.instacao) : null,
         custo_m2: form.custo_m2 ? Number(form.custo_m2) : null,
-        custo_total: form.custo_total ? Number(form.custo_total) : calcCusto ?? null,
+        custo_tecido: form.custo_tecido ? Number(form.custo_tecido) : calcCusto ?? null,
         custo_acabamento: form.custo_acabamento ? Number(form.custo_acabamento) : null,
         fechado: form.fechado,
         observacoes: form.observacoes || null,
@@ -156,7 +156,8 @@ export default function EditOrcamentoForm({ orcamento, onClose, toast, responsav
       addHistorico({ orcamento_id: orcamento.id, snapshot: updated as object })
       toast('success', 'Orçamento atualizado!')
       onClose()
-    } catch {
+    } catch (err) {
+      console.error('[EditOrcamentoForm] handleSubmit error:', err)
       toast('error', 'Erro ao atualizar orçamento.')
     }
   }
@@ -282,7 +283,7 @@ export default function EditOrcamentoForm({ orcamento, onClose, toast, responsav
             <div className="col-span-2">
               {/* TAREFA A: badge "calculado automaticamente" */}
               <label className={labelClass}>
-                Custo Total (R$)
+                Custo (R$)
                 <span className="ml-1.5 text-xs font-normal text-muted-foreground">para calcular margem</span>
                 {isAutocalc && (
                   <span className="ml-2 rounded-full bg-green-500/10 px-2 py-0.5 text-[10px] font-semibold text-green-600 dark:text-green-400">
@@ -290,7 +291,7 @@ export default function EditOrcamentoForm({ orcamento, onClose, toast, responsav
                   </span>
                 )}
               </label>
-              <input type="number" step="0.01" value={form.custo_total} onChange={(e) => set('custo_total', e.target.value)} className={inputClass} placeholder="0.00" />
+              <input type="number" step="0.01" value={form.custo_tecido} onChange={(e) => set('custo_tecido', e.target.value)} className={inputClass} placeholder="0.00" />
               {calcCusto !== null && (
                 <p className="mt-1.5 flex items-center gap-2 text-xs">
                   <span className="text-muted-foreground">
@@ -302,7 +303,7 @@ export default function EditOrcamentoForm({ orcamento, onClose, toast, responsav
                   </span>
                   <button
                     type="button"
-                    onClick={() => set('custo_total', calcCusto.toFixed(2))}
+                    onClick={() => set('custo_tecido', calcCusto.toFixed(2))}
                     className="shrink-0 rounded bg-primary/10 px-2 py-0.5 text-primary font-medium hover:bg-primary/20 transition-colors"
                   >
                     Usar
@@ -317,7 +318,7 @@ export default function EditOrcamentoForm({ orcamento, onClose, toast, responsav
                   Margem estimada: {previewMargem.toFixed(1)}%
                 </span>
                 <span className="text-xs text-muted-foreground">
-                  {formatCurrency((parseFloat(form.valor_venda) || 0) + (parseFloat(form.instacao) || 0))} − {formatCurrency(parseFloat(form.custo_total) || 0)}
+                  {formatCurrency((parseFloat(form.valor_venda) || 0) + (parseFloat(form.instacao) || 0))} − {formatCurrency(parseFloat(form.custo_tecido) || 0)}
                 </span>
               </div>
             )}

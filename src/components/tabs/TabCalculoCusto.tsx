@@ -7,9 +7,9 @@ interface Props {
 }
 
 export default function TabCalculoCusto({ data }: Props) {
-  const comCusto = data.filter((o) => o.custo_total != null && o.custo_total > 0)
+  const comCusto = data.filter((o) => o.custo_tecido != null && o.custo_tecido > 0)
 
-  const totalMes = comCusto.reduce((s, o) => s + (o.custo_total ?? 0), 0)
+  const totalMes = comCusto.reduce((s, o) => s + (o.custo_tecido ?? 0), 0)
 
   const hoje = new Date()
   const inicioSemana = new Date(hoje)
@@ -22,7 +22,7 @@ export default function TabCalculoCusto({ data }: Props) {
   const custoPorModelo = comCusto.reduce<Record<string, { total: number; count: number }>>((acc, o) => {
     const k = o.modelo
     if (!acc[k]) acc[k] = { total: 0, count: 0 }
-    acc[k].total += o.custo_total ?? 0
+    acc[k].total += o.custo_tecido ?? 0
     acc[k].count += 1
     return acc
   }, {})

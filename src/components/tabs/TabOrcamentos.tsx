@@ -76,7 +76,7 @@ export default function TabOrcamentos({ data, loading, toast }: Props) {
     const matchStatus = fechadoFilter === 'todos'
       || (fechadoFilter === 'fechado' ? o.fechado === true : false)
       || (fechadoFilter === 'aberto' ? o.fechado !== true : false)
-      || (fechadoFilter === 'sem-custo' ? o.fechado === true && (!o.custo_total || o.custo_total === 0) : false)
+      || (fechadoFilter === 'sem-custo' ? o.fechado === true && (!o.custo_tecido || o.custo_tecido === 0) : false)
 
     let matchPeriodo = true
     if (periodo !== 'todos' && o.created_at) {

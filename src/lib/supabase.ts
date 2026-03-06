@@ -17,7 +17,7 @@ export type Orcamento = {
   quantidade: number
   cor_ferragem_motor?: string | null
   acabamentos?: string | null
-  custo_total?: number | null
+  custo_tecido?: number | null
   custo_acabamento?: number | null
   custo_m2?: number | null
   fechado?: boolean | null
