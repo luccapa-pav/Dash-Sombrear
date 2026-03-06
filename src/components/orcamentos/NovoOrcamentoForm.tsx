@@ -82,7 +82,7 @@ export default function NovoOrcamentoForm({ toast, open, onClose, responsaveis }
     try {
       // TAREFA A: calcular margem no payload
       const receita = (form.valor_venda ? Number(form.valor_venda) : 0) + (form.instacao ? Number(form.instacao) : 0)
-      const custoTotal = form.custo_total ? Number(form.custo_total) : null
+      const custoTotal = form.custo_total ? Number(form.custo_total) : (calcCusto ?? null)
       const margem = receita > 0 && custoTotal ? ((receita - custoTotal) / receita) * 100 : null
 
       await mutateAsync({
@@ -99,7 +99,7 @@ export default function NovoOrcamentoForm({ toast, open, onClose, responsaveis }
         valor_venda: form.valor_venda ? Number(form.valor_venda) : null,
         instacao: form.instacao ? Number(form.instacao) : null,
         custo_m2: form.custo_m2 ? Number(form.custo_m2) : null,
-        custo_total: form.custo_total ? Number(form.custo_total) : null,
+        custo_total: form.custo_total ? Number(form.custo_total) : calcCusto ?? null,
         custo_acabamento: form.custo_acabamento ? Number(form.custo_acabamento) : null,
         fechado: false,
         observacoes: form.observacoes || null,
