@@ -31,7 +31,7 @@ import { useUpdateOrcamento } from '@/hooks/useOrcamentos'
 const PAGE_SIZE = 50
 
 // TAREFA B: FechadoCheckbox com botão Desfazer
-function FechadoCheckbox({ orcamento, toast }: { orcamento: Orcamento; toast: (type: 'success' | 'error', message: string) => void }) {
+function FechadoCheckbox({ orcamento }: { orcamento: Orcamento }) {
   const { mutate: update, isPending } = useUpdateOrcamento()
   const [showUndo, setShowUndo] = useState(false)
   const [prevFechado, setPrevFechado] = useState(orcamento.fechado)
@@ -455,7 +455,7 @@ export default function OrcamentosTable({ data, toast, isFiltered, search = '', 
                           )}
                         </td>
                         {/* TAREFA B: passa toast para FechadoCheckbox */}
-                        <td className="px-4 py-3"><FechadoCheckbox orcamento={o} toast={toast} /></td>
+                        <td className="px-4 py-3"><FechadoCheckbox orcamento={o} /></td>
                       </tr>
                     )
                   })}
@@ -510,8 +510,7 @@ export default function OrcamentosTable({ data, toast, isFiltered, search = '', 
                         </p>
                       </div>
                       <div className="ml-2 shrink-0">
-                        {/* TAREFA B: passa toast */}
-                        <FechadoCheckbox orcamento={o} toast={toast} />
+                                        <FechadoCheckbox orcamento={o} />
                       </div>
                     </div>
                     <div className="flex items-center justify-between pl-8">
