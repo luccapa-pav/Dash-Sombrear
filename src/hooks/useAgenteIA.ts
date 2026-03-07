@@ -1,5 +1,9 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+
+// Status usado pelo n8n quando a IA passa o preço e o cliente quer atendimento humano
+export const STATUS_AGUARDANDO = 'aguardando_atendimento'
+export const STATUS_CONVERTIDO  = 'convertido'
 
 export type CrmLead = {
   id: string
@@ -63,6 +67,23 @@ export function useCrmLeads() {
     },
     retry: 1,
     refetchOnWindowFocus: false,
+  })
+}
+
+export function useMarcarConvertido() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('crm_sombrear_ia')
+        .update({ status_lead: STATUS_CONVERTIDO })
+        .eq('id', id)
+      if (error) {
+        console.error('[useMarcarConvertido]', error)
+        throw error
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['crm-sombrear-ia'] }),
   })
 }
 

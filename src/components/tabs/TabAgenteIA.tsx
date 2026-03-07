@@ -1,13 +1,15 @@
 import { useState } from 'react'
-import { useCrmLeads, useOrcamentosIA } from '@/hooks/useAgenteIA'
+import { useCrmLeads, useOrcamentosIA, useMarcarConvertido, STATUS_AGUARDANDO, STATUS_CONVERTIDO } from '@/hooks/useAgenteIA'
 import type { CrmLead, OrcamentoIA } from '@/hooks/useAgenteIA'
 import { formatCurrency } from '@/lib/utils'
 import { useCountUp } from '@/hooks/useCountUp'
 import {
   Bot, DollarSign, FileText, Moon, Users, CalendarCheck,
-  ChevronDown, ChevronUp, ChevronsUpDown, Phone, ChevronRight, MessageSquare,
+  ChevronDown, ChevronUp, ChevronsUpDown, Phone, ChevronRight,
+  MessageSquare, CheckCircle2, Bell, Check,
 } from 'lucide-react'
 
+// ── Horário comercial ────────────────────────────────────────────────────────
 const HORA_INICIO = 8
 const HORA_FIM = 18
 
@@ -19,96 +21,122 @@ function isForaDoHorario(dateStr: string | null) {
   return day === 0 || day === 6 || hour < HORA_INICIO || hour >= HORA_FIM
 }
 
-function formatDate(iso: string | null) {
+// ── Formatação ───────────────────────────────────────────────────────────────
+function fmtDate(iso: string | null) {
   if (!iso) return '—'
   return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })
 }
-
-function formatTime(iso: string | null) {
+function fmtTime(iso: string | null) {
   if (!iso) return ''
   return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 }
 
-function filterLeadsByPeriod(data: CrmLead[], periodo: string) {
+// ── Filtro de período ────────────────────────────────────────────────────────
+function filterLeads(data: CrmLead[], periodo: string) {
   if (periodo === 'todos') return data
   const now = new Date()
   return data.filter((o) => {
     const d = new Date(o.created_at)
-    if (periodo === 'hoje') return d.toDateString() === now.toDateString()
-    if (periodo === 'semana') {
-      const weekAgo = new Date(now); weekAgo.setDate(now.getDate() - 7)
-      return d >= weekAgo
-    }
-    if (periodo === 'mes') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+    if (periodo === 'hoje')  return d.toDateString() === now.toDateString()
+    if (periodo === 'semana') { const w = new Date(now); w.setDate(now.getDate() - 7); return d >= w }
+    if (periodo === 'mes')   return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
     return true
   })
 }
-
-function filterOrcsByPeriod(data: OrcamentoIA[], periodo: string) {
+function filterOrcs(data: OrcamentoIA[], periodo: string) {
   if (periodo === 'todos') return data
   const now = new Date()
   return data.filter((o) => {
     const d = new Date(o.created_at)
-    if (periodo === 'hoje') return d.toDateString() === now.toDateString()
-    if (periodo === 'semana') {
-      const weekAgo = new Date(now); weekAgo.setDate(now.getDate() - 7)
-      return d >= weekAgo
-    }
-    if (periodo === 'mes') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+    if (periodo === 'hoje')  return d.toDateString() === now.toDateString()
+    if (periodo === 'semana') { const w = new Date(now); w.setDate(now.getDate() - 7); return d >= w }
+    if (periodo === 'mes')   return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
     return true
   })
 }
 
-const STATUS_STYLE: Record<string, string> = {
-  'qualificado':      'bg-blue-500/10 text-blue-600 dark:text-blue-400',
-  'cotado':           'bg-orange-500/10 text-orange-600 dark:text-orange-400',
-  'agendado':         'bg-purple-500/10 text-purple-600 dark:text-purple-400',
-  'fechado':          'bg-green-500/10 text-green-600 dark:text-green-400',
-  'perdido':          'bg-red-500/10 text-red-500',
-  'aguardando':       'bg-muted text-muted-foreground',
-  'em_atendimento':   'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400',
+// ── Sistema de cores de status (único e consistente) ─────────────────────────
+type StatusInfo = { badge: string; label: string }
+
+function getStatus(raw: string | null): StatusInfo {
+  const s = raw?.toLowerCase().trim() ?? ''
+  if (s === STATUS_CONVERTIDO || s === 'fechado')
+    return { badge: 'bg-green-500/15 text-green-700 dark:text-green-400 border border-green-500/20', label: 'Convertido' }
+  if (s === STATUS_AGUARDANDO || s === 'aguardando_atendente' || s === 'transferido')
+    return { badge: 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30', label: 'Aguardando atendimento' }
+  if (s === 'qualificado')
+    return { badge: 'bg-blue-500/15 text-blue-700 dark:text-blue-400', label: 'Qualificado' }
+  if (s === 'cotado')
+    return { badge: 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-400', label: 'Cotado' }
+  if (s === 'agendado')
+    return { badge: 'bg-purple-500/15 text-purple-700 dark:text-purple-400', label: 'Agendado' }
+  if (s === 'em_atendimento' || s === 'em atendimento')
+    return { badge: 'bg-sky-500/15 text-sky-700 dark:text-sky-400', label: 'Em atendimento' }
+  if (s === 'perdido' || s === 'desistiu')
+    return { badge: 'bg-red-500/15 text-red-600 dark:text-red-400', label: 'Perdido' }
+  if (!s || s === 'aguardando' || s === 'novo')
+    return { badge: 'bg-muted text-muted-foreground', label: raw ? (raw.charAt(0).toUpperCase() + raw.slice(1)) : 'Sem status' }
+  // Qualquer outro status desconhecido
+  return { badge: 'bg-muted text-muted-foreground', label: raw!.charAt(0).toUpperCase() + raw!.slice(1).replace(/_/g, ' ') }
 }
 
-function statusStyle(s: string | null) {
-  if (!s) return 'bg-muted text-muted-foreground'
-  return STATUS_STYLE[s.toLowerCase().replace(/\s+/g, '_')] ?? 'bg-muted text-muted-foreground'
+function isConvertido(s: string | null) {
+  const v = s?.toLowerCase().trim() ?? ''
+  return v === STATUS_CONVERTIDO || v === 'fechado'
+}
+function isAguardando(s: string | null) {
+  const v = s?.toLowerCase().trim() ?? ''
+  return v === STATUS_AGUARDANDO || v === 'aguardando_atendente' || v === 'transferido'
 }
 
-function statusLabel(s: string | null) {
-  if (!s) return 'Sem status'
-  return s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ')
-}
-
+// ── Componentes auxiliares ───────────────────────────────────────────────────
 const PERIODOS = [
-  { value: 'todos',  label: 'Tudo' },
-  { value: 'hoje',   label: 'Hoje' },
-  { value: 'semana', label: 'Semana' },
-  { value: 'mes',    label: 'Mês' },
+  { value: 'todos', label: 'Tudo' },
+  { value: 'hoje',  label: 'Hoje' },
+  { value: 'semana',label: 'Semana' },
+  { value: 'mes',   label: 'Mês' },
 ]
 
-type LeadSortKey = 'created_at' | 'nome' | 'timestamp_ultima_msg'
-type OrcSortKey  = 'created_at' | 'modelo' | 'valor'
-type SortDir = 'asc' | 'desc'
+function PeriodTabs({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="flex gap-1 rounded-lg bg-muted/60 p-1">
+      {PERIODOS.map(({ value: v, label }) => (
+        <button key={v} onClick={() => onChange(v)}
+          className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-all
+            ${value === v ? 'bg-card text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
+          {label}
+        </button>
+      ))}
+    </div>
+  )
+}
 
-function KpiCard({ label, value, icon: Icon, highlight, sub, delay }: {
+function KpiCard({ label, value, icon: Icon, highlight, sub, attention, delay }: {
   label: string; value: string | number; icon: React.ElementType
-  highlight?: boolean; sub?: string; delay: number
+  highlight?: boolean; attention?: boolean; sub?: string; delay: number
 }) {
   return (
     <div
       className={`animate-in fade-in-0 slide-in-from-bottom-4 duration-500 rounded-xl border p-4 shadow-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-elevated cursor-default
-        ${highlight ? 'border-primary/30 bg-primary/5 dark:bg-primary/10' : 'bg-card'}`}
+        ${attention  ? 'border-amber-500/40 bg-amber-500/5 dark:bg-amber-500/10'
+        : highlight  ? 'border-primary/30 bg-primary/5 dark:bg-primary/10'
+        : 'bg-card'}`}
       style={{ animationFillMode: 'both', animationDelay: `${delay}ms` }}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <p className="text-xs font-medium text-muted-foreground truncate">{label}</p>
-          <p className={`font-display mt-1 text-xl font-bold truncate tabular-nums ${highlight ? 'text-primary' : ''}`}>
+          <p className={`font-display mt-1 text-xl font-bold truncate tabular-nums
+            ${attention ? 'text-amber-600 dark:text-amber-400'
+            : highlight ? 'text-primary' : ''}`}>
             {value}
           </p>
           {sub && <p className="mt-0.5 text-xs text-muted-foreground truncate">{sub}</p>}
         </div>
-        <div className={`shrink-0 rounded-lg p-1.5 ${highlight ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}>
+        <div className={`shrink-0 rounded-lg p-1.5
+          ${attention ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
+          : highlight ? 'bg-primary/15 text-primary'
+          : 'bg-muted text-muted-foreground'}`}>
           <Icon className="h-4 w-4" />
         </div>
       </div>
@@ -126,101 +154,111 @@ function SkeletonCard() {
   )
 }
 
-function PeriodTabs({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  return (
-    <div className="flex gap-1 rounded-lg bg-muted/60 p-1">
-      {PERIODOS.map(({ value: v, label }) => (
-        <button
-          key={v}
-          onClick={() => onChange(v)}
-          className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-all duration-150
-            ${value === v ? 'bg-card text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-        >
-          {label}
-        </button>
-      ))}
-    </div>
-  )
-}
+type LeadSort = { key: 'created_at' | 'nome' | 'timestamp_ultima_msg'; dir: 'asc' | 'desc' }
+type OrcSort  = { key: 'created_at' | 'modelo' | 'valor'; dir: 'asc' | 'desc' }
 
+// ── Componente principal ─────────────────────────────────────────────────────
 export default function TabAgenteIA() {
   const { data: leads = [], isLoading: loadingCrm } = useCrmLeads()
   const { data: orcamentosIA = [], isLoading: loadingOrc } = useOrcamentosIA()
-  const loading = loadingCrm || loadingOrc
+  const { mutate: marcarConvertido, isPending: marcando } = useMarcarConvertido()
 
   const [periodo, setPeriodo] = useState('mes')
-  const [leadSort, setLeadSort] = useState<{ key: LeadSortKey; dir: SortDir }>({ key: 'created_at', dir: 'desc' })
-  const [orcSort,  setOrcSort]  = useState<{ key: OrcSortKey;  dir: SortDir }>({ key: 'created_at', dir: 'desc' })
+  const [leadSort, setLeadSort] = useState<LeadSort>({ key: 'created_at', dir: 'desc' })
+  const [orcSort,  setOrcSort]  = useState<OrcSort>({  key: 'created_at', dir: 'desc' })
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [confirmId, setConfirmId] = useState<string | null>(null)
 
-  const filtrados  = filterLeadsByPeriod(leads, periodo)
-  const orcFiltrados = filterOrcsByPeriod(orcamentosIA, periodo)
+  const filtrados    = filterLeads(leads, periodo)
+  const orcFiltrados = filterOrcs(orcamentosIA, periodo)
 
   // KPIs
+  const aguardando   = filtrados.filter((l) => isAguardando(l.status_lead))
+  const convertidos  = filtrados.filter((l) => isConvertido(l.status_lead))
   const comMedicao   = filtrados.filter((l) => l.data_medicao_instalacao?.trim())
   const foraLeads    = filtrados.filter((l) => isForaDoHorario(l.created_at))
   const foraMsgs     = filtrados.filter((l) => isForaDoHorario(l.timestamp_ultima_msg))
   const valorTotal   = orcFiltrados.reduce((s, o) =>
-    s + (o.valor_venda_total_base ?? 0) + (o.valor_venda_acabamento_total ?? 0) + (o.valor_colocacao ?? 0), 0
-  )
+    s + (o.valor_venda_total_base ?? 0) + (o.valor_venda_acabamento_total ?? 0) + (o.valor_colocacao ?? 0), 0)
 
   const animLeads  = useCountUp(filtrados.length, 700)
-  const animOrcs   = useCountUp(orcFiltrados.length, 750)
+  const animAguard = useCountUp(aguardando.length, 700)
+  const animConv   = useCountUp(convertidos.length, 750)
   const animValor  = useCountUp(valorTotal, 900)
   const animMed    = useCountUp(comMedicao.length, 750)
-  const animFLead  = useCountUp(foraLeads.length, 700)
-  const animFMsg   = useCountUp(foraMsgs.length, 700)
+  const animFora   = useCountUp(foraLeads.length + foraMsgs.length, 700)
 
   const kpis = [
-    { label: 'Leads atendidos',       value: Math.round(animLeads),  icon: Users,          highlight: true,  sub: 'no período' },
-    { label: 'Orçamentos gerados',    value: Math.round(animOrcs),   icon: FileText,       highlight: false, sub: valorTotal > 0 ? formatCurrency(animValor) : 'nenhum valor ainda' },
-    { label: 'Valor total cotado',    value: valorTotal > 0 ? formatCurrency(animValor) : '—', icon: DollarSign, highlight: false, sub: `em ${orcFiltrados.length} orçamento${orcFiltrados.length !== 1 ? 's' : ''}` },
-    { label: 'Medições agendadas',    value: Math.round(animMed),    icon: CalendarCheck,  highlight: false, sub: 'com data marcada' },
-    { label: 'Pessoas fora horário',  value: Math.round(animFLead),  icon: Moon,           highlight: false, sub: 'leads recebidos fora do comercial' },
-    { label: 'Mensagens fora horário',value: Math.round(animFMsg),   icon: MessageSquare,  highlight: false, sub: 'última msg fora do comercial' },
+    { label: 'Leads atendidos',        value: Math.round(animLeads),  icon: Users,         highlight: true,  sub: 'no período' },
+    { label: 'Aguardando atendimento', value: Math.round(animAguard), icon: Bell,          attention: true,  sub: 'passaram orçamento + querem atendimento' },
+    { label: 'Convertidos',            value: Math.round(animConv),   icon: CheckCircle2,  highlight: false, sub: `de ${filtrados.length} leads` },
+    { label: 'Valor cotado (IA)',       value: valorTotal > 0 ? formatCurrency(animValor) : '—', icon: DollarSign, highlight: false, sub: `${orcFiltrados.length} orçamento${orcFiltrados.length !== 1 ? 's' : ''}` },
+    { label: 'Medições agendadas',     value: Math.round(animMed),    icon: CalendarCheck, highlight: false, sub: 'com data marcada' },
+    { label: 'Fora do horário',        value: Math.round(animFora),   icon: Moon,          highlight: false, sub: `${foraLeads.length} pessoas · ${foraMsgs.length} mensagens` },
   ]
 
-  // Sort leads
-  const sortedLeads = [...filtrados].sort((a, b) => {
-    let av: string, bv: string
-    if (leadSort.key === 'nome') { av = a.nome ?? ''; bv = b.nome ?? '' }
-    else if (leadSort.key === 'timestamp_ultima_msg') { av = a.timestamp_ultima_msg ?? ''; bv = b.timestamp_ultima_msg ?? '' }
-    else { av = a.created_at; bv = b.created_at }
-    if (av < bv) return leadSort.dir === 'asc' ? -1 : 1
-    if (av > bv) return leadSort.dir === 'asc' ? 1 : -1
-    return 0
-  })
-
-  // Sort orçamentos
-  const sortedOrcs = [...orcFiltrados].sort((a, b) => {
-    let av: string | number, bv: string | number
-    if (orcSort.key === 'modelo') { av = a.modelo ?? ''; bv = b.modelo ?? '' }
-    else if (orcSort.key === 'valor') {
-      av = (a.valor_venda_total_base ?? 0) + (a.valor_venda_acabamento_total ?? 0) + (a.valor_colocacao ?? 0)
-      bv = (b.valor_venda_total_base ?? 0) + (b.valor_venda_acabamento_total ?? 0) + (b.valor_colocacao ?? 0)
-    } else { av = a.created_at; bv = b.created_at }
-    if (av < bv) return orcSort.dir === 'asc' ? -1 : 1
-    if (av > bv) return orcSort.dir === 'asc' ? 1 : -1
-    return 0
-  })
-
-  function toggleLeadSort(key: LeadSortKey) {
-    setLeadSort((s) => s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'desc' })
-  }
-  function toggleOrcSort(key: OrcSortKey) {
-    setOrcSort((s) => s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'desc' })
+  // Sort
+  function sortedLeadsList() {
+    return [...filtrados].sort((a, b) => {
+      // Aguardando sempre primeiro
+      const wa = isAguardando(a.status_lead) ? -1 : 0
+      const wb = isAguardando(b.status_lead) ? -1 : 0
+      if (wa !== wb) return wa - wb
+      let av: string, bv: string
+      if (leadSort.key === 'nome') { av = a.nome ?? ''; bv = b.nome ?? '' }
+      else if (leadSort.key === 'timestamp_ultima_msg') { av = a.timestamp_ultima_msg ?? ''; bv = b.timestamp_ultima_msg ?? '' }
+      else { av = a.created_at; bv = b.created_at }
+      if (av < bv) return leadSort.dir === 'asc' ? -1 : 1
+      if (av > bv) return leadSort.dir === 'asc' ? 1 : -1
+      return 0
+    })
   }
 
-  function LeadSortIcon({ k }: { k: LeadSortKey }) {
-    if (leadSort.key !== k) return <ChevronsUpDown className="h-3 w-3 opacity-40" />
-    return leadSort.dir === 'asc' ? <ChevronUp className="h-3 w-3 text-primary" /> : <ChevronDown className="h-3 w-3 text-primary" />
-  }
-  function OrcSortIcon({ k }: { k: OrcSortKey }) {
-    if (orcSort.key !== k) return <ChevronsUpDown className="h-3 w-3 opacity-40" />
-    return orcSort.dir === 'asc' ? <ChevronUp className="h-3 w-3 text-primary" /> : <ChevronDown className="h-3 w-3 text-primary" />
+  function sortedOrcsList() {
+    return [...orcFiltrados].sort((a, b) => {
+      let av: string | number, bv: string | number
+      if (orcSort.key === 'modelo') { av = a.modelo ?? ''; bv = b.modelo ?? '' }
+      else if (orcSort.key === 'valor') {
+        av = (a.valor_venda_total_base ?? 0) + (a.valor_venda_acabamento_total ?? 0) + (a.valor_colocacao ?? 0)
+        bv = (b.valor_venda_total_base ?? 0) + (b.valor_venda_acabamento_total ?? 0) + (b.valor_colocacao ?? 0)
+      } else { av = a.created_at; bv = b.created_at }
+      if (av < bv) return orcSort.dir === 'asc' ? -1 : 1
+      if (av > bv) return orcSort.dir === 'asc' ? 1 : -1
+      return 0
+    })
   }
 
-  if (loading) {
+  function LeadTh({ label, k }: { label: string; k?: 'created_at' | 'nome' | 'timestamp_ultima_msg' }) {
+    const active = k && leadSort.key === k
+    return (
+      <th className={`px-5 py-3 text-left font-medium text-muted-foreground whitespace-nowrap ${k ? 'cursor-pointer select-none hover:text-foreground' : ''}`}
+        onClick={() => k && setLeadSort(s => s.key === k ? { key: k, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key: k, dir: 'desc' })}>
+        <span className="flex items-center gap-1">
+          {label}
+          {k && (active
+            ? (leadSort.dir === 'asc' ? <ChevronUp className="h-3 w-3 text-primary" /> : <ChevronDown className="h-3 w-3 text-primary" />)
+            : <ChevronsUpDown className="h-3 w-3 opacity-40" />)}
+        </span>
+      </th>
+    )
+  }
+
+  function OrcTh({ label, k }: { label: string; k?: 'created_at' | 'modelo' | 'valor' }) {
+    const active = k && orcSort.key === k
+    return (
+      <th className={`px-5 py-3 text-left font-medium text-muted-foreground whitespace-nowrap ${k ? 'cursor-pointer select-none hover:text-foreground' : ''}`}
+        onClick={() => k && setOrcSort(s => s.key === k ? { key: k, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key: k, dir: 'desc' })}>
+        <span className="flex items-center gap-1">
+          {label}
+          {k && (active
+            ? (orcSort.dir === 'asc' ? <ChevronUp className="h-3 w-3 text-primary" /> : <ChevronDown className="h-3 w-3 text-primary" />)
+            : <ChevronsUpDown className="h-3 w-3 opacity-40" />)}
+        </span>
+      </th>
+    )
+  }
+
+  if (loadingCrm || loadingOrc) {
     return (
       <div className="space-y-5">
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
@@ -234,16 +272,36 @@ export default function TabAgenteIA() {
     )
   }
 
+  const sortedLeads = sortedLeadsList()
+  const sortedOrcs  = sortedOrcsList()
+
   return (
     <div className="space-y-5">
-      {/* KPIs */}
+
+      {/* ── KPIs ── */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
-        {kpis.map(({ label, value, icon, highlight, sub }, i) => (
-          <KpiCard key={label} label={label} value={value} icon={icon} highlight={highlight} sub={sub} delay={i * 80} />
+        {kpis.map(({ label, value, icon, highlight, attention, sub }, i) => (
+          <KpiCard key={label} label={label} value={value} icon={icon}
+            highlight={highlight} attention={attention} sub={sub} delay={i * 80} />
         ))}
       </div>
 
-      {/* ─── Tabela de Leads (CRM) ─── */}
+      {/* ── Banner: aguardando atendimento ── */}
+      {aguardando.length > 0 && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 px-5 py-4 flex items-center gap-3">
+          <Bell className="h-5 w-5 text-amber-500 shrink-0 animate-pulse" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
+              {aguardando.length} lead{aguardando.length !== 1 ? 's' : ''} aguardando atendimento humano
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              A IA passou o orçamento e o cliente quer falar com um atendente. Aparecem no topo da lista.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Tabela de Leads ── */}
       <div className="rounded-xl border bg-card shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4">
           <div className="flex items-center gap-2">
@@ -267,80 +325,114 @@ export default function TabAgenteIA() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/40">
-                    {([
-                      { label: 'Entrada',       key: 'created_at' as LeadSortKey },
-                      { label: 'Nome',           key: 'nome' as LeadSortKey },
-                      { label: 'WhatsApp' },
-                      { label: 'Modelo / Ambiente' },
-                      { label: 'Último valor' },
-                      { label: 'Últ. mensagem', key: 'timestamp_ultima_msg' as LeadSortKey },
-                      { label: 'Status' },
-                      { label: 'Horário' },
-                    ] as { label: string; key?: LeadSortKey }[]).map(({ label, key }) => (
-                      <th
-                        key={label}
-                        className={`px-5 py-3 text-left font-medium text-muted-foreground whitespace-nowrap ${key ? 'cursor-pointer select-none hover:text-foreground' : ''}`}
-                        onClick={() => key && toggleLeadSort(key)}
-                      >
-                        <span className="flex items-center gap-1">{label}{key && <LeadSortIcon k={key} />}</span>
-                      </th>
-                    ))}
+                    <LeadTh label="Entrada"      k="created_at" />
+                    <LeadTh label="Nome"          k="nome" />
+                    <th className="px-5 py-3 text-left font-medium text-muted-foreground">WhatsApp</th>
+                    <th className="px-5 py-3 text-left font-medium text-muted-foreground">Modelo / Ambiente</th>
+                    <th className="px-5 py-3 text-left font-medium text-muted-foreground">Último valor</th>
+                    <LeadTh label="Últ. mensagem" k="timestamp_ultima_msg" />
+                    <th className="px-5 py-3 text-left font-medium text-muted-foreground">Status</th>
+                    <th className="px-5 py-3 text-left font-medium text-muted-foreground">Ação</th>
                   </tr>
                 </thead>
                 <tbody>
                   {sortedLeads.map((lead) => {
-                    const foraEntrada = isForaDoHorario(lead.created_at)
-                    const foraMsg     = isForaDoHorario(lead.timestamp_ultima_msg)
-                    const expanded    = expandedId === lead.id
+                    const aguard    = isAguardando(lead.status_lead)
+                    const conv      = isConvertido(lead.status_lead)
+                    const foraMsg   = isForaDoHorario(lead.timestamp_ultima_msg)
+                    const foraEntr  = isForaDoHorario(lead.created_at)
+                    const expanded  = expandedId === lead.id
+                    const status    = getStatus(lead.status_lead)
+
                     return (
                       <>
                         <tr
                           key={lead.id}
-                          className={`border-b last:border-0 transition-colors cursor-pointer
-                            ${foraEntrada ? 'bg-blue-500/[0.03]' : ''}
-                            ${expanded ? 'bg-muted/30' : 'hover:bg-muted/20'}`}
-                          onClick={() => setExpandedId(expanded ? null : lead.id)}
+                          className={`border-b last:border-0 transition-colors
+                            ${aguard   ? 'border-l-2 border-l-amber-400' : ''}
+                            ${conv     ? 'opacity-60' : ''}
+                            ${expanded ? 'bg-muted/30' : 'hover:bg-muted/20 cursor-pointer'}`}
+                          onClick={() => !expanded || setExpandedId(null)}
                         >
-                          <td className="px-5 py-3.5 text-muted-foreground tabular-nums whitespace-nowrap">
-                            <span className="block">{formatDate(lead.created_at)}</span>
-                            <span className="text-xs opacity-70">{formatTime(lead.created_at)}</span>
+                          <td className="px-5 py-3.5 text-muted-foreground tabular-nums whitespace-nowrap"
+                            onClick={() => setExpandedId(expanded ? null : lead.id)}>
+                            <span className="block">{fmtDate(lead.created_at)}</span>
+                            <span className="flex items-center gap-1 text-xs opacity-70">
+                              {fmtTime(lead.created_at)}
+                              {foraEntr && <Moon className="h-2.5 w-2.5 text-blue-400" />}
+                            </span>
                           </td>
-                          <td className="px-5 py-3.5 font-medium">{lead.nome ?? '—'}</td>
-                          <td className="px-5 py-3.5">
+                          <td className="px-5 py-3.5 font-medium" onClick={() => setExpandedId(expanded ? null : lead.id)}>
+                            {lead.nome ?? '—'}
+                          </td>
+                          <td className="px-5 py-3.5" onClick={() => setExpandedId(expanded ? null : lead.id)}>
                             {lead.whatsapp
-                              ? <span className="flex items-center gap-1 text-muted-foreground"><Phone className="h-3 w-3 shrink-0" />{lead.whatsapp}</span>
-                              : '—'}
+                              ? <span className="flex items-center gap-1 text-muted-foreground text-xs"><Phone className="h-3 w-3 shrink-0" />{lead.whatsapp}</span>
+                              : <span className="text-muted-foreground">—</span>}
                           </td>
-                          <td className="px-5 py-3.5">
+                          <td className="px-5 py-3.5" onClick={() => setExpandedId(expanded ? null : lead.id)}>
                             <span className="block font-medium">{lead.modelo_interesse ?? '—'}</span>
                             {lead.ambiente && <span className="text-xs text-muted-foreground">{lead.ambiente}</span>}
                           </td>
-                          <td className="px-5 py-3.5 font-medium">{lead.ultimo_valor_cotado ?? '—'}</td>
-                          <td className="px-5 py-3.5 tabular-nums whitespace-nowrap">
-                            <span className={`block text-sm ${foraMsg ? 'text-blue-500 dark:text-blue-400 font-medium' : 'text-muted-foreground'}`}>
-                              {formatDate(lead.timestamp_ultima_msg)}
+                          <td className="px-5 py-3.5 font-medium tabular-nums" onClick={() => setExpandedId(expanded ? null : lead.id)}>
+                            {lead.ultimo_valor_cotado ?? '—'}
+                          </td>
+                          <td className="px-5 py-3.5 tabular-nums whitespace-nowrap" onClick={() => setExpandedId(expanded ? null : lead.id)}>
+                            <span className={`block text-sm ${foraMsg ? 'text-blue-500 dark:text-blue-400' : 'text-muted-foreground'}`}>
+                              {fmtDate(lead.timestamp_ultima_msg)}
                             </span>
-                            <span className="text-xs opacity-70">{formatTime(lead.timestamp_ultima_msg)}</span>
+                            <span className="flex items-center gap-1 text-xs opacity-70">
+                              {fmtTime(lead.timestamp_ultima_msg)}
+                              {foraMsg && <MessageSquare className="h-2.5 w-2.5 text-blue-400" />}
+                            </span>
+                          </td>
+                          <td className="px-5 py-3.5" onClick={() => setExpandedId(expanded ? null : lead.id)}>
+                            <span className={`rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap ${status.badge}`}>
+                              {status.label}
+                            </span>
                           </td>
                           <td className="px-5 py-3.5">
-                            <span className={`rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap ${statusStyle(lead.status_lead)}`}>
-                              {statusLabel(lead.status_lead)}
-                            </span>
-                          </td>
-                          <td className="px-5 py-3.5">
-                            <span className="flex items-center gap-1.5">
-                              {foraEntrada
-                                ? <span className="flex items-center gap-1 text-xs font-medium text-blue-500 dark:text-blue-400"><Moon className="h-3 w-3" />Fora</span>
-                                : <span className="text-xs text-muted-foreground">Comercial</span>
-                              }
-                              <ChevronRight className={`h-3.5 w-3.5 text-muted-foreground/50 transition-transform ${expanded ? 'rotate-90' : ''}`} />
-                            </span>
+                            <div className="flex items-center gap-1.5">
+                              {!conv && (
+                                confirmId === lead.id ? (
+                                  <div className="flex items-center gap-1">
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); marcarConvertido(lead.id); setConfirmId(null) }}
+                                      disabled={marcando}
+                                      className="rounded-lg bg-green-500 px-2.5 py-1 text-xs font-semibold text-white hover:bg-green-600 disabled:opacity-60 transition-colors"
+                                    >
+                                      {marcando ? '...' : <><Check className="inline h-3 w-3 mr-1" />Confirmar</>}
+                                    </button>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); setConfirmId(null) }}
+                                      className="rounded-lg border px-2 py-1 text-xs text-muted-foreground hover:bg-muted transition-colors"
+                                    >
+                                      Não
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setConfirmId(lead.id) }}
+                                    className="flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-medium text-muted-foreground hover:border-green-500/50 hover:text-green-600 hover:bg-green-500/5 transition-colors"
+                                  >
+                                    <CheckCircle2 className="h-3.5 w-3.5" />
+                                    Converteu
+                                  </button>
+                                )
+                              )}
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setExpandedId(expanded ? null : lead.id) }}
+                                className="rounded p-1 hover:bg-muted transition-colors"
+                              >
+                                <ChevronRight className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${expanded ? 'rotate-90' : ''}`} />
+                              </button>
+                            </div>
                           </td>
                         </tr>
 
                         {expanded && (
-                          <tr key={`${lead.id}-detail`} className="border-b bg-muted/10">
-                            <td colSpan={8} className="px-5 py-4">
+                          <tr key={`${lead.id}-exp`} className="border-b bg-muted/10">
+                            <td colSpan={8} className="px-6 py-4">
                               <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 text-sm">
                                 {lead.resumo_conversa && (
                                   <div className="col-span-2 sm:col-span-4">
@@ -348,12 +440,12 @@ export default function TabAgenteIA() {
                                     <p className="text-sm text-muted-foreground leading-relaxed">{lead.resumo_conversa}</p>
                                   </div>
                                 )}
-                                {lead.medidas_coletadas && <div><p className="text-xs text-muted-foreground mb-0.5">Medidas</p><p className="font-medium">{lead.medidas_coletadas}</p></div>}
-                                {lead.tecido_cor && <div><p className="text-xs text-muted-foreground mb-0.5">Tecido / Cor</p><p className="font-medium">{lead.tecido_cor}</p></div>}
-                                {lead.acabamento_desejado && <div><p className="text-xs text-muted-foreground mb-0.5">Acabamento</p><p className="font-medium">{lead.acabamento_desejado}</p></div>}
-                                {lead.precisa_instalacao && <div><p className="text-xs text-muted-foreground mb-0.5">Instalação</p><p className="font-medium">{lead.precisa_instalacao}</p></div>}
+                                {lead.medidas_coletadas    && <div><p className="text-xs text-muted-foreground mb-0.5">Medidas</p><p className="font-medium">{lead.medidas_coletadas}</p></div>}
+                                {lead.tecido_cor           && <div><p className="text-xs text-muted-foreground mb-0.5">Tecido / Cor</p><p className="font-medium">{lead.tecido_cor}</p></div>}
+                                {lead.acabamento_desejado  && <div><p className="text-xs text-muted-foreground mb-0.5">Acabamento</p><p className="font-medium">{lead.acabamento_desejado}</p></div>}
+                                {lead.precisa_instalacao   && <div><p className="text-xs text-muted-foreground mb-0.5">Instalação</p><p className="font-medium">{lead.precisa_instalacao}</p></div>}
                                 {lead.data_medicao_instalacao && <div><p className="text-xs text-muted-foreground mb-0.5">Data medição</p><p className="font-medium text-primary">{lead.data_medicao_instalacao}</p></div>}
-                                {lead.endereco_cep && <div><p className="text-xs text-muted-foreground mb-0.5">CEP</p><p className="font-medium">{lead.endereco_cep}</p></div>}
+                                {lead.endereco_cep         && <div><p className="text-xs text-muted-foreground mb-0.5">CEP</p><p className="font-medium">{lead.endereco_cep}</p></div>}
                               </div>
                             </td>
                           </tr>
@@ -368,43 +460,48 @@ export default function TabAgenteIA() {
             {/* Mobile */}
             <div className="md:hidden divide-y">
               {sortedLeads.map((lead) => {
-                const foraEntrada = isForaDoHorario(lead.created_at)
+                const aguard   = isAguardando(lead.status_lead)
+                const conv     = isConvertido(lead.status_lead)
                 const expanded = expandedId === lead.id
+                const status   = getStatus(lead.status_lead)
                 return (
-                  <div key={lead.id} className={foraEntrada ? 'bg-blue-500/[0.03]' : ''}>
-                    <button className="w-full px-4 py-4 text-left" onClick={() => setExpandedId(expanded ? null : lead.id)}>
+                  <div key={lead.id} className={`${aguard ? 'border-l-2 border-l-amber-400' : ''} ${conv ? 'opacity-60' : ''}`}>
+                    <div className="px-4 py-4">
                       <div className="flex items-start justify-between gap-2 mb-1">
                         <div>
                           <p className="font-semibold text-sm">{lead.nome ?? 'Sem nome'}</p>
                           {lead.whatsapp && <p className="text-xs text-muted-foreground mt-0.5">{lead.whatsapp}</p>}
                         </div>
-                        <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${statusStyle(lead.status_lead)}`}>
-                          {statusLabel(lead.status_lead)}
+                        <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${status.badge}`}>
+                          {status.label}
                         </span>
                       </div>
                       <div className="flex items-center justify-between mt-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground">{formatDate(lead.created_at)} {formatTime(lead.created_at)}</span>
-                          {foraEntrada && <Moon className="h-3 w-3 text-blue-500" />}
-                        </div>
-                        <div className="flex items-center gap-1">
+                        <span className="text-xs text-muted-foreground">{fmtDate(lead.created_at)} {fmtTime(lead.created_at)}</span>
+                        <div className="flex items-center gap-1.5">
                           {lead.ultimo_valor_cotado && <span className="text-sm font-bold text-primary">{lead.ultimo_valor_cotado}</span>}
-                          <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${expanded ? 'rotate-90' : ''}`} />
+                          {!conv && (
+                            <button
+                              onClick={() => marcarConvertido(lead.id)}
+                              disabled={marcando}
+                              className="rounded-lg border px-2 py-0.5 text-xs font-medium text-muted-foreground hover:border-green-500/50 hover:text-green-600 transition-colors"
+                            >
+                              <CheckCircle2 className="inline h-3 w-3 mr-0.5" />Converteu
+                            </button>
+                          )}
+                          <button onClick={() => setExpandedId(expanded ? null : lead.id)}>
+                            <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${expanded ? 'rotate-90' : ''}`} />
+                          </button>
                         </div>
                       </div>
-                    </button>
+                    </div>
                     {expanded && (
-                      <div className="px-4 pb-4 border-t bg-muted/20 space-y-2">
-                        {lead.resumo_conversa && (
-                          <div className="pt-3">
-                            <p className="text-xs text-muted-foreground mb-1">Resumo</p>
-                            <p className="text-sm text-muted-foreground">{lead.resumo_conversa}</p>
-                          </div>
-                        )}
+                      <div className="px-4 pb-4 border-t bg-muted/10 space-y-2">
+                        {lead.resumo_conversa && <div className="pt-3"><p className="text-xs text-muted-foreground mb-1">Resumo</p><p className="text-sm text-muted-foreground">{lead.resumo_conversa}</p></div>}
                         <div className="grid grid-cols-2 gap-3 pt-2 text-sm">
-                          {lead.modelo_interesse && <div><p className="text-xs text-muted-foreground">Modelo</p><p className="font-medium">{lead.modelo_interesse}</p></div>}
-                          {lead.tecido_cor && <div><p className="text-xs text-muted-foreground">Tecido/Cor</p><p className="font-medium">{lead.tecido_cor}</p></div>}
-                          {lead.medidas_coletadas && <div><p className="text-xs text-muted-foreground">Medidas</p><p className="font-medium">{lead.medidas_coletadas}</p></div>}
+                          {lead.modelo_interesse        && <div><p className="text-xs text-muted-foreground">Modelo</p><p className="font-medium">{lead.modelo_interesse}</p></div>}
+                          {lead.tecido_cor              && <div><p className="text-xs text-muted-foreground">Tecido/Cor</p><p className="font-medium">{lead.tecido_cor}</p></div>}
+                          {lead.medidas_coletadas       && <div><p className="text-xs text-muted-foreground">Medidas</p><p className="font-medium">{lead.medidas_coletadas}</p></div>}
                           {lead.data_medicao_instalacao && <div><p className="text-xs text-muted-foreground">Data medição</p><p className="font-medium text-primary">{lead.data_medicao_instalacao}</p></div>}
                         </div>
                       </div>
@@ -415,17 +512,17 @@ export default function TabAgenteIA() {
             </div>
 
             {(foraLeads.length > 0 || foraMsgs.length > 0) && (
-              <div className="border-t px-5 py-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-muted-foreground">
+              <div className="border-t px-5 py-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
                 {foraLeads.length > 0 && (
                   <span className="flex items-center gap-1.5">
-                    <Moon className="h-3.5 w-3.5 text-blue-500 shrink-0" />
-                    <span><span className="font-semibold text-foreground">{foraLeads.length}</span> pessoa{foraLeads.length !== 1 ? 's' : ''} atendida{foraLeads.length !== 1 ? 's' : ''} fora do horário</span>
+                    <Moon className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+                    <span><span className="font-semibold text-foreground">{foraLeads.length}</span> pessoa{foraLeads.length !== 1 ? 's' : ''} entraram fora do horário comercial</span>
                   </span>
                 )}
                 {foraMsgs.length > 0 && (
                   <span className="flex items-center gap-1.5">
-                    <MessageSquare className="h-3.5 w-3.5 text-blue-500 shrink-0" />
-                    <span><span className="font-semibold text-foreground">{foraMsgs.length}</span> conversa{foraMsgs.length !== 1 ? 's' : ''} com última mensagem fora do horário</span>
+                    <MessageSquare className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+                    <span><span className="font-semibold text-foreground">{foraMsgs.length}</span> última{foraMsgs.length !== 1 ? 's' : ''} mensagem{foraMsgs.length !== 1 ? 's' : ''} fora do horário</span>
                   </span>
                 )}
               </div>
@@ -434,7 +531,7 @@ export default function TabAgenteIA() {
         )}
       </div>
 
-      {/* ─── Tabela de Orçamentos IA ─── */}
+      {/* ── Tabela de Orçamentos IA ── */}
       <div className="rounded-xl border bg-card shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4">
           <div className="flex items-center gap-2">
@@ -453,31 +550,20 @@ export default function TabAgenteIA() {
           </div>
         ) : (
           <>
-            {/* Desktop */}
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/40">
-                    {([
-                      { label: 'Data',    key: 'created_at' as OrcSortKey },
-                      { label: 'Modelo',  key: 'modelo' as OrcSortKey },
-                      { label: 'Ambiente' },
-                      { label: 'Medidas' },
-                      { label: 'Tecido / Acabamento' },
-                      { label: 'Qtd' },
-                      { label: 'Custo base' },
-                      { label: 'Valor venda' },
-                      { label: 'Colocação' },
-                      { label: 'Total',   key: 'valor' as OrcSortKey },
-                    ] as { label: string; key?: OrcSortKey }[]).map(({ label, key }) => (
-                      <th
-                        key={label}
-                        className={`px-5 py-3 text-left font-medium text-muted-foreground whitespace-nowrap ${key ? 'cursor-pointer select-none hover:text-foreground' : ''}`}
-                        onClick={() => key && toggleOrcSort(key)}
-                      >
-                        <span className="flex items-center gap-1">{label}{key && <OrcSortIcon k={key} />}</span>
-                      </th>
-                    ))}
+                    <OrcTh label="Data"    k="created_at" />
+                    <OrcTh label="Modelo"  k="modelo" />
+                    <th className="px-5 py-3 text-left font-medium text-muted-foreground">Ambiente</th>
+                    <th className="px-5 py-3 text-left font-medium text-muted-foreground">Medidas</th>
+                    <th className="px-5 py-3 text-left font-medium text-muted-foreground">Tecido / Acabamento</th>
+                    <th className="px-5 py-3 text-left font-medium text-muted-foreground">Qtd</th>
+                    <th className="px-5 py-3 text-left font-medium text-muted-foreground">Custo base</th>
+                    <th className="px-5 py-3 text-left font-medium text-muted-foreground">Valor venda</th>
+                    <th className="px-5 py-3 text-left font-medium text-muted-foreground">Colocação</th>
+                    <OrcTh label="Total"   k="valor" />
                   </tr>
                 </thead>
                 <tbody>
@@ -486,8 +572,8 @@ export default function TabAgenteIA() {
                     return (
                       <tr key={o.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
                         <td className="px-5 py-3.5 text-muted-foreground tabular-nums whitespace-nowrap">
-                          <span className="block">{formatDate(o.created_at)}</span>
-                          <span className="text-xs opacity-70">{formatTime(o.created_at)}</span>
+                          <span className="block">{fmtDate(o.created_at)}</span>
+                          <span className="text-xs opacity-70">{fmtTime(o.created_at)}</span>
                         </td>
                         <td className="px-5 py-3.5 font-medium">{o.modelo ?? '—'}</td>
                         <td className="px-5 py-3.5 text-muted-foreground">{o.ambiente ?? '—'}</td>
@@ -498,19 +584,11 @@ export default function TabAgenteIA() {
                           <span className="block">{o.tecido ?? '—'}</span>
                           {o.acabamento && <span className="text-xs text-muted-foreground">{o.acabamento}</span>}
                         </td>
-                        <td className="px-5 py-3.5 text-center">{o.quantidade ?? '—'}</td>
-                        <td className="px-5 py-3.5 tabular-nums text-muted-foreground">
-                          {o.custo_total_base != null ? formatCurrency(o.custo_total_base) : '—'}
-                        </td>
-                        <td className="px-5 py-3.5 tabular-nums">
-                          {o.valor_venda_total_base != null ? formatCurrency((o.valor_venda_total_base ?? 0) + (o.valor_venda_acabamento_total ?? 0)) : '—'}
-                        </td>
-                        <td className="px-5 py-3.5 tabular-nums text-muted-foreground">
-                          {o.valor_colocacao != null ? formatCurrency(o.valor_colocacao) : '—'}
-                        </td>
-                        <td className="px-5 py-3.5 font-bold text-primary tabular-nums">
-                          {total > 0 ? formatCurrency(total) : '—'}
-                        </td>
+                        <td className="px-5 py-3.5 text-center tabular-nums">{o.quantidade ?? '—'}</td>
+                        <td className="px-5 py-3.5 tabular-nums text-muted-foreground">{o.custo_total_base != null ? formatCurrency(o.custo_total_base) : '—'}</td>
+                        <td className="px-5 py-3.5 tabular-nums">{o.valor_venda_total_base != null ? formatCurrency((o.valor_venda_total_base ?? 0) + (o.valor_venda_acabamento_total ?? 0)) : '—'}</td>
+                        <td className="px-5 py-3.5 tabular-nums text-muted-foreground">{o.valor_colocacao != null ? formatCurrency(o.valor_colocacao) : '—'}</td>
+                        <td className="px-5 py-3.5 font-bold text-primary tabular-nums">{total > 0 ? formatCurrency(total) : '—'}</td>
                       </tr>
                     )
                   })}
@@ -518,7 +596,6 @@ export default function TabAgenteIA() {
               </table>
             </div>
 
-            {/* Mobile */}
             <div className="md:hidden divide-y">
               {sortedOrcs.map((o) => {
                 const total = (o.valor_venda_total_base ?? 0) + (o.valor_venda_acabamento_total ?? 0) + (o.valor_colocacao ?? 0)
@@ -531,31 +608,19 @@ export default function TabAgenteIA() {
                       </div>
                       {total > 0 && <span className="shrink-0 text-sm font-bold text-primary tabular-nums">{formatCurrency(total)}</span>}
                     </div>
-                    <div className="flex items-center justify-between mt-1">
-                      <span className="text-xs text-muted-foreground">
-                        {o.largura && o.altura ? `${o.largura}×${o.altura}m · ` : ''}{o.tecido ?? ''}
-                        {o.quantidade ? ` · ${o.quantidade}un` : ''}
-                      </span>
-                      <span className="text-xs text-muted-foreground tabular-nums">{formatDate(o.created_at)}</span>
-                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {o.largura && o.altura ? `${o.largura}×${o.altura}m · ` : ''}{o.tecido ?? ''}
+                      {o.quantidade ? ` · ${o.quantidade}un` : ''} · {fmtDate(o.created_at)}
+                    </p>
                   </div>
                 )
               })}
             </div>
 
-            {/* Rodapé totais */}
-            <div className="border-t px-5 py-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-muted-foreground">
-              <span>
-                Total cotado no período:{' '}
-                <span className="font-semibold text-foreground">{formatCurrency(valorTotal)}</span>
-              </span>
+            <div className="border-t px-5 py-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
+              <span>Total cotado: <span className="font-semibold text-foreground">{formatCurrency(valorTotal)}</span></span>
               {orcFiltrados.some((o) => o.valor_colocacao) && (
-                <span>
-                  Inclui colocação:{' '}
-                  <span className="font-semibold text-foreground">
-                    {formatCurrency(orcFiltrados.reduce((s, o) => s + (o.valor_colocacao ?? 0), 0))}
-                  </span>
-                </span>
+                <span>Colocação: <span className="font-semibold text-foreground">{formatCurrency(orcFiltrados.reduce((s, o) => s + (o.valor_colocacao ?? 0), 0))}</span></span>
               )}
             </div>
           </>
