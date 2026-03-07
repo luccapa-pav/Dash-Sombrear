@@ -114,7 +114,7 @@ export default function Dashboard() {
         <div key={activeTab} className="animate-in fade-in-0 slide-in-from-bottom-2 duration-200">
           {activeTab === 'orcamentos' && <TabOrcamentos data={orcamentos} loading={isLoading} toast={toast} />}
           {activeTab === 'analises' && <TabAnalises data={orcamentos} />}
-          {activeTab === 'agente-ia' && <TabAgenteIA data={orcamentos} />}
+          {activeTab === 'agente-ia' && <TabAgenteIA />}
           {activeTab === 'calculo-custo' && <TabCalculoCusto data={orcamentos} />}
           {activeTab === 'admin' && isAdmin && <PainelAdmin toast={toast} />}
         </div>
